@@ -8,11 +8,11 @@ from numpy.random import default_rng
 import numpy as np
 import tensorflow as tf
 import os
-from keract import display_activations, get_activations
 from tqdm import tqdm
 from experiment import visualise_latent_space, test_ae, get_latent_position, plot_latent_similarity
 import tensorflow_probability as tfp
 import scipy
+from helper import *
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.get_logger().setLevel('WARNING')
@@ -21,7 +21,7 @@ rng = default_rng(0)
 
 def l1_distance(x1, x2):
     """Returns L1 distance between two points."""
-    return tf.reduce_sum(tf.abs(x1 - x2))
+    return np.sum(np.abs(x1 - x2))
 
 
 def translate_x_to_alpha(x, x_input, x_baseline):
@@ -51,135 +51,17 @@ def translate_alpha_to_x(alpha, x_input, x_baseline):
     return x_baseline + (x_input - x_baseline) * alpha
 
 
-def guided_ig(x_input, x_baseline, grad_func, steps=200, fraction=0.25, max_dist=0.02):
 
-    x = tf.identity(x_baseline)
-    l1_total = l1_distance(x_input, x_baseline)
-    attr = tf.zeros_like(x_input, dtype=tf.float32)
-
-    # If the input is equal to the baseline then the attribution is zero.
-    total_diff = x_input - x_baseline
-    if tf.reduce_sum(tf.abs(total_diff)) < 1e-6:
-        return attr
-
-    latent_points = []
-    # Iterate through every step.
-    for step in tqdm(range(steps)):
-        # Calculate gradients and make a copy.
-
-        fraction_new = fraction
-        grad_actual, latent = grad_func(x)
-        latent_points.append(latent[0])
-        grad = tf.identity(grad_actual)
-        # Calculate current step alpha and the ranges of allowed values for this
-        # step.
-        alpha = (step + 1.0) / steps
-        alpha_min = max(alpha - max_dist, 0.0)
-        alpha_max = min(alpha + max_dist, 1.0)
-        x_min = translate_alpha_to_x(alpha_min, x_input, x_baseline)
-        x_max = translate_alpha_to_x(alpha_max, x_input, x_baseline)
-        # The goal of every step is to reduce L1 distance to the input.
-        # `l1_target` is the desired L1 distance after completion of this step.
-        l1_target = l1_total * (1 - (step + 1) / steps)
-
-        # Iterate until the desired L1 distance has been reached.
-        gamma = tf.convert_to_tensor(np.inf)
-        while gamma > 1.0:
-            x_old = tf.identity(x)
-
-            x_alpha = translate_x_to_alpha(x, x_input, x_baseline)
-            # replace nan with max
-            x_alpha = tf.where(tf.logical_not(
-                tf.math.is_finite(x_alpha)), alpha_max, x_alpha)
-
-            # All features that fell behind the [alpha_min, alpha_max] interval in
-            # terms of alpha, should be assigned the x_min values.
-            x = tf.where(x_alpha < alpha_min, x_min, x)
-
-            # Calculate current L1 distance from the input.
-            l1_current = l1_distance(x, x_input)
-            # If the current L1 distance is close enough to the desired one then
-            # update the attribution and proceed to the next step.
-            if tf.abs(l1_target - l1_current) < 1e-9:
-                attr += (x - x_old) * grad_actual
-                print("close enough")
-                break
-
-            # Features that reached `x_max` should not be included in the selection.
-            # Assign very high gradients to them so they are excluded.
-            # grad[x == x_max] = np.inf
-            grad = tf.where(x == x_max, np.inf, grad)
-
-            # Select features with the lowest absolute gradient.
-            threshold = tfp.stats.percentile(
-                tf.abs(grad), tf.cast(fraction_new * 100, tf.int32), interpolation='lower')
-
-            s = tf.where(tf.logical_and(tf.abs(grad)
-                         <= threshold, grad != np.inf), 1., 0.)
-
-            # Find by how much the L1 distance can be reduced by changing only the
-            # selected features.
-
-            l1_s = tf.reduce_sum(tf.abs(x - x_max) * s)
-
-            # Calculate ratio `gamma` that show how much the selected features should
-            # be changed toward `x_max` to close the gap between current L1 and target
-            # L1.
-            if l1_s > 0:
-                gamma_new = (l1_current - l1_target) / l1_s
-                if tf.abs(gamma_new - gamma) < 1e-9:
-                    fraction_new += 0.01
-                gamma = gamma_new
-            else:
-                gamma = np.inf
-
-            if gamma > 1.0:
-                # Gamma higher than 1.0 means that changing selected features is not
-                # enough to close the gap. Therefore change them as much as possible to
-                # stay in the valid range.
-                x = tf.where(s == 1., x_max, x)
-            else:
-                x_new = translate_alpha_to_x(gamma, x_max, x)
-                x = tf.where(s == 1., x_new, x)
-
-            # Update attribution to reflect changes in `x`.
-            attr += (x - x_old) * grad_actual
-    latent_points = tf.stack(latent_points, axis=0)
-    return tf.reduce_sum(attr, axis=0), latent_points
-
-
-def compute_gradients(features, model, recon=False):
-
-    with tf.GradientTape(persistent=True) as tape:
-        tape.watch(features)
-        latent, loss, decoded = model(features)
-        # tf.print(loss)
-    if recon:
-        jacobian = tape.gradient(loss, features)
-    else:
-        jacobian = tape.batch_jacobian(latent, features)
-
-    return jacobian, latent
-
-
-def integral_approximation(gradients, positions, reduce_points):
+def integral_approximation(gradients, positions):
     # riemann_trapezoidal
-    grads = (gradients[:-1] + gradients[1:]) / \
-        tf.constant(2.0, dtype=gradients.dtype)
-    integrated_gradients = tf.math.reduce_mean(grads, axis=0)
+    grads = (gradients[:-1] + gradients[1:]) / 2.
+    integrated_gradients = np.mean(grads, axis=0)
 
-    if reduce_points:
-        positions = tf.gather(positions, [0, positions.shape[0] - 1], axis=0)
-        diff = positions[1] - positions[0]
-        slope = tf.math.atan2(diff[:, 1], diff[:, 0])
-        return integrated_gradients, positions[1], slope
-    else:
-        positions = tf.squeeze(positions)
-        return integrated_gradients, positions, None
+    positions = np.squeeze(positions)
+    return integrated_gradients, positions
 
 
-@tf.function(reduce_retracing=True)
-def one_batch(model, baseline, feature, alphas, batch_size, recon=False):
+def one_batch(model, baseline, feature, alphas, batch_size):
 
     # Generate interpolated inputs between baseline and input.
     interpolated_path_input_batch = interpolate_feature(baseline=baseline,
@@ -187,38 +69,33 @@ def one_batch(model, baseline, feature, alphas, batch_size, recon=False):
                                                         alphas=alphas)
 
     # Compute gradients between model outputs and interpolated inputs.
-    interpolated_path_input_batch = tf.reshape(
-        interpolated_path_input_batch, shape=[-1, 100])
+    interpolated_path_input_batch = np.reshape(
+        interpolated_path_input_batch, (-1, 100))
 
-    gradient_batch, latent = compute_gradients(features=interpolated_path_input_batch,
-                                               model=model, recon=recon)
+    gradient_batch = gradient_estimate(x_t=interpolated_path_input_batch,
+                                               func=model, delta_t=1e-3)
+    latent=model(interpolated_path_input_batch)
+    gradient_batch = np.reshape(
+        gradient_batch, (-1, batch_size, 2, 100))
 
-    if recon:
-        gradient_batch = tf.reshape(
-            gradient_batch, shape=[-1, batch_size, 100])
-    else:
-        gradient_batch = tf.reshape(
-            gradient_batch, shape=[-1, batch_size, 2, 100])
-
-    latent = tf.reshape(latent, shape=[-1, batch_size, 2])
+    latent = np.reshape(latent, (-1, batch_size, 2))
 
     return gradient_batch, latent
 
 
 def interpolate_feature(baseline, feature, alphas=None):
     # Generate m_steps intervals for integral_approximation() below.
-    alphas_x = alphas[:, tf.newaxis, tf.newaxis]
-    baseline_x = tf.expand_dims(baseline, axis=0)
-    input_x = tf.expand_dims(feature, axis=0)
+    alphas_x = alphas[:, np.newaxis, np.newaxis]
+    baseline_x = np.expand_dims(baseline, axis=0)
+    input_x = np.expand_dims(feature, axis=0)
     delta = input_x - baseline_x
     features = baseline_x + alphas_x * delta
     return features
 
 
-def integrated_gradients(model, baseline, feature, m_steps=50, batch_size=32, recon=False, frac=1, reduce_points=False):
+def integrated_gradients(dr_func, baseline, feature, m_steps=50, batch_size=32, recon=False, frac=1, reduce_points=False, feature_range=None):
     # Generate alphas.
-    alphas = tf.cast(tf.linspace(start=0.0, stop=1.0,
-                     num=m_steps + 1), dtype=baseline.dtype)
+    alphas = np.linspace(start=0.0, stop=1.0, num=m_steps + 1)
 
     if frac != 1:
         rng = np.random.default_rng()
@@ -234,13 +111,13 @@ def integrated_gradients(model, baseline, feature, m_steps=50, batch_size=32, re
     gradient_batches = []
     latent_batches = []
     # Iterate alphas range and batch computation for speed, memory efficiency, and scaling to larger m_steps.
-    for alpha in tf.range(0, len(alphas), batch_size):
+    for alpha in range(0, len(alphas), batch_size):
         from_ = alpha
-        to = tf.minimum(from_ + batch_size, len(alphas))
+        to = np.minimum(from_ + batch_size, len(alphas))
         alpha_batch = alphas[from_:to]
 
-        gradient_batch, latent = one_batch(model,
-                                           baseline, feature, alpha_batch, batch_size=baseline.shape[0], recon=recon)
+        gradient_batch, latent = one_batch(dr_func,
+                                           baseline, feature, alpha_batch, batch_size=baseline.shape[0])
 
         gradient_batches.append(gradient_batch)
 
@@ -248,23 +125,23 @@ def integrated_gradients(model, baseline, feature, m_steps=50, batch_size=32, re
 
     # Concatenate path gradients together row-wise into single tensor.
 
-    total_gradients = tf.concat(gradient_batches, axis=0)
+    total_gradients = np.concatenate(gradient_batches, axis=0)
 
-    latent_points = tf.concat(latent_batches, axis=0)
+    latent_points = np.concatenate(latent_batches, axis=0)
 
     # Integral approximation through averaging gradients.
 
-    avg_gradients, latent_points, slope = integral_approximation(
-        gradients=total_gradients, positions=latent_points, reduce_points=reduce_points)
+    avg_gradients, latent_points = integral_approximation(
+        gradients=total_gradients, positions=latent_points)
 
     diff = (feature - baseline)
     if not recon:
-        diff = diff[:, tf.newaxis, :]
+        diff = diff[:, np.newaxis, :]
 
     # Scale integrated gradients with respect to input.
     integrated_gradients = diff * avg_gradients
 
-    return integrated_gradients, latent_points, slope
+    return integrated_gradients, latent_points
 
 
 def draw_summary_plot(all_attributions, all_data, feature_names, output_path, positions, bin_by_positions=False, bins=[10, 10]):
@@ -396,7 +273,7 @@ def explain_single_packet(baseline, target, autoencoder):
         baseline = baseline[tf.newaxis, :]
     if tf.rank(target) == 1:
         target = target[tf.newaxis, :]
-    attributions, latent_points, _ = integrated_gradients(
+    attributions, latent_points, = integrated_gradients(
         autoencoder, baseline, target, m_steps=1280, recon=True, reduce_points=False)
 
     attributions = tf.reduce_sum(attributions, axis=0)

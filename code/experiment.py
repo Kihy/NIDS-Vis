@@ -14,11 +14,20 @@ from keract import get_activations
 import plotly.express as px
 import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA, KernelPCA
+from sklearn.manifold import LocallyLinearEmbedding,Isomap
+import umap
+from openTSNE import TSNE
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.get_logger().setLevel('WARNING')
 # plt.style.use(['science', "no-latex"])
 rng = default_rng()
+
+device_name = tf.test.gpu_device_name()
+if not device_name:
+    raise SystemError('GPU device not found')
+print('Found GPU at: {}'.format(device_name))
 
 
 def get_distance_map(autoencoder, resolution=(10, 10), top_right=(11, 1), bottom_left=(-1, -1)):
@@ -40,7 +49,7 @@ def get_distance_map(autoencoder, resolution=(10, 10), top_right=(11, 1), bottom
     batch_size = 1024
     num_coords = coords.shape[0]
     split_sizes = [batch_size] * \
-        (num_coords//batch_size)+[num_coords % batch_size]
+        (num_coords // batch_size) + [num_coords % batch_size]
     f_val = []
     for batch in tf.split(coords, split_sizes):
 
@@ -55,9 +64,9 @@ def get_distance_map(autoencoder, resolution=(10, 10), top_right=(11, 1), bottom
 
     # calculate the index of all neighbours of each grid, boundary is extended.
     xi = xi[:, :, tf.newaxis, tf.newaxis]
-    xi_n = tf.clip_by_value(xi+fx, 0, resolution[0]-1)
+    xi_n = tf.clip_by_value(xi + fx, 0, resolution[0] - 1)
     yi = yi[:, :, tf.newaxis, tf.newaxis]
-    yi_n = tf.clip_by_value(yi+fy, 0, resolution[1]-1)
+    yi_n = tf.clip_by_value(yi + fy, 0, resolution[1] - 1)
 
     # concatenate neighbour coords
     coords_ni = tf.concat(
@@ -69,14 +78,14 @@ def get_distance_map(autoencoder, resolution=(10, 10), top_right=(11, 1), bottom
     f_val = f_val[:, :, tf.newaxis, tf.newaxis, :]
 
     # calculate distance between neighbours in high dimensional space
-    diff = neighbour_val-f_val
+    diff = neighbour_val - f_val
 
     mag_diff = tf.norm(diff, axis=-1)
 
     # calculate distance between neighbours in latent space
-    dx = (top_right[0]-bottom_left[0])/(resolution[0]-1)
-    dy = (top_right[1]-bottom_left[1])/(resolution[1]-1)
-    dd = tf.sqrt(dx**2+dy**2)
+    dx = (top_right[0] - bottom_left[0]) / (resolution[0] - 1)
+    dy = (top_right[1] - bottom_left[1]) / (resolution[1] - 1)
+    dd = tf.sqrt(dx**2 + dy**2)
 
     distance_matrix = tf.convert_to_tensor(
         [[dd, dy, dd], [dx, 1., dx], [dd, dy, dd]])
@@ -99,7 +108,7 @@ def get_distance_map(autoencoder, resolution=(10, 10), top_right=(11, 1), bottom
         diff_vec, max_feature_idx[:, :, tf.newaxis], batch_dims=2)
 
     # calculate average distance
-    dist = tf.reduce_sum(mag_diff, axis=[-1, -2])/8.
+    dist = tf.reduce_sum(mag_diff, axis=[-1, -2]) / 8.
 
     return grid_points_x, grid_points_y, dist, xv, yv, max_idx_flat, max_feature_idx, max_feature_change
     # return tf.reshape(xv, [-1]), tf.reshape(yv, [-1]), tf.reshape(dist/diff_lat, [-1])
@@ -118,35 +127,14 @@ def train_feature_cluster(path, chunksize):
     return fc.cluster(100)[0]
 
 
-def get_latent_position(autoencoder, scaler, path, frac=1):
-    batch_size = 1024
-
-    traffic_ds = get_dataset(path, batch_size, True,
-                             scaler, frac, read_with="pd")
-    # x = []
-    # y = []
-    latent_dim = []
-    recon_array = []
-
-    # Test autoencoder
-    for data in tqdm(traffic_ds, leave=False, desc=f"Visualize: {path}"):
-
-        latent, recon_error, decoded = autoencoder(data)
-        #calculate reconstruction loss
-        recon_array.extend(recon_error.numpy())
-        latent_dim.extend(np.squeeze(latent))
-
-    return np.array(latent_dim), recon_array
-
-
 def linearity(latent, metric, verbose=False, name=""):
     latent = tf.abs(latent)
 
     min_lat = tf.reduce_min(latent, axis=0)
     max_lat = tf.reduce_max(latent, axis=0)
 
-    latent_norm_x = (latent[:, 0]-min_lat[0])/(max_lat[0]-min_lat[0])
-    latent_norm_y = (latent[:, 1]-min_lat[1])/(max_lat[1]-min_lat[1])
+    latent_norm_x = (latent[:, 0] - min_lat[0]) / (max_lat[0] - min_lat[0])
+    latent_norm_y = (latent[:, 1] - min_lat[1]) / (max_lat[1] - min_lat[1])
 
     latent = tf.stack([latent_norm_x, latent_norm_y], axis=1)
 
@@ -154,10 +142,10 @@ def linearity(latent, metric, verbose=False, name=""):
     bottom_left = tfp.stats.percentile(latent, 0.01, axis=0)
 
     # one diagonal
-    diff = top_right-bottom_left
-    m = diff[1]/diff[0]
+    diff = top_right - bottom_left
+    m = diff[1] / diff[0]
 
-    line_y = m*(latent[:, 0]-bottom_left[0])+bottom_left[1]
+    line_y = m * (latent[:, 0] - bottom_left[0]) + bottom_left[1]
     line_y = line_y[:, tf.newaxis]
     latent_y = latent[:, 1][:, tf.newaxis]
 
@@ -194,10 +182,24 @@ def get_mean_weights(autoencoder):
     mean_weights = tf.keras.metrics.Mean()
 
     for layer in autoencoder.encoder.layers:
-        weights = layer.get_weights()
         if not layer.name.startswith("dense"):
             continue
-        w, b = weights
+        weights = layer.get_weights()
+        if layer.get_config()["use_bias"]:
+            w, b = weights
+        else:
+            w = weights
+        mean_weights.update_state(tf.abs(w))
+
+    for layer in autoencoder.decoder.layers:
+        if not layer.name.startswith("dense"):
+            continue
+        weights = layer.get_weights()
+
+        if layer.get_config()["use_bias"]:
+            w, b = weights
+        else:
+            w = weights
         mean_weights.update_state(tf.abs(w))
     return mean_weights.result()
 
@@ -207,12 +209,14 @@ def test_ae(batch_size, scaler, model_name, training_param, autoencoder=None, st
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
     if autoencoder is None:
         autoencoder = tf.keras.models.load_model(
-            f"../models/{model_name}")
+            f"../models/{model_name}", custom_objects={"LogMinMaxScaler": LogMinMaxScaler})
 
     threshold = 0.
 
-    #calculate mean activation
+    # calculate mean activation
     mean_activations = tf.keras.metrics.Mean()
+    mean_mae = tf.keras.metrics.Mean()
+    mae = tf.keras.losses.MeanAbsoluteError()
 
     for path in training_param["train_paths"]:
         # traffic_ds = pd.read_csv(path, chunksize=batch_size,
@@ -221,17 +225,20 @@ def test_ae(batch_size, scaler, model_name, training_param, autoencoder=None, st
             path, batch_size, shuffle=False, scaler=scaler)
         for x in tqdm(traffic_ds, leave=False, desc="Test Benign"):
 
-            latent, err, _ = autoencoder(x)
+            latent, err, decoded_x = autoencoder(x)
             threshold = tf.maximum(threshold, tf.reduce_max(err))
             mean_activations.update_state(get_mean_activation(autoencoder, x))
+            mean_mae.update_state(mae(x, decoded_x))
 
     with test_summary_writer.as_default():
         tf.summary.scalar(
             f'activations/benign', mean_activations.result(), step=step)
         tf.summary.scalar(
             f'weights', get_mean_weights(autoencoder), step=step)
+        tf.summary.scalar(
+            f'mae/benign', mean_mae.result(), step=step)
 
-    #calculate linearity
+    # calculate linearity
     msle = tf.keras.metrics.Mean()
     linearity_metric = tf.keras.losses.MeanAbsoluteError(
         reduction=tf.keras.losses.Reduction.NONE)
@@ -267,41 +274,67 @@ def test_ae(batch_size, scaler, model_name, training_param, autoencoder=None, st
         mdr.reset_state()
 
 
-def train(ae_type, shape, ae_param, training_param, scaler, model_name):
-    n_out = (ae_param["batch_size"]
-             - ae_param["window_size"])/ae_param["step_size"]
-    if int(n_out) != n_out:
-        raise ValueError(
-            "The step size and window size cannot nicely split the data."
-            + "Ensure that (batch size-window size) / step size is an integer"+f"batch_size: {batch_size}, window_size {window_size}, step_size {step_size}")
+def train(dr_type, dr_param, training_param):
+    if dr_type == "pkl":
+        if dr_param["model_name"]=="pca":
+            dr_model = PCA(**dr_param["config"])
+        elif dr_param["model_name"]=="kernel_pca":
+            dr_model = KernelPCA(**dr_param["config"])
+        elif dr_param["model_name"]=="lle":
+            dr_model=LocallyLinearEmbedding(**dr_param["config"])
+        elif dr_param["model_name"]=="isomap":
+            dr_model=Isomap(**dr_param["config"])
+        elif dr_param["model_name"]=="umap":
+            dr_model = umap.UMAP(**dr_param["config"])
+        elif dr_param["model_name"]=="tsne":
+            dr_model = TSNE(**dr_param["config"])
+        else:
+            raise ValueError("Invalid dimensionality reduction type")
+        dr_model=train_sklearn_model(dr_model, training_param)
+        with open(f"../models/{dr_param['model_name']}.pkl", "wb") as of:
+            pickle.dump(dr_model, of)
 
-    if training_param["continue_training"]:
-        autoencoder = tf.keras.models.load_model(
-            f"../models/{model_name}",
-            custom_objects={"Autoencoder": Autoencoder}, compile=False)
     else:
-        autoencoder = get_ae(ae_type, shape, ae_param)
 
-    train_ae(autoencoder, ae_param, training_param, scaler, model_name)
+        if training_param["continue_training"]:
+            autoencoder = tf.keras.models.load_model(
+                f"../models/{dr_param['model_name']}",
+                custom_objects={"Autoencoder": Autoencoder},  compile=False)
+        else:
+            autoencoder = get_ae(dr_type, dr_param)
 
-    tf.keras.models.save_model(
-        autoencoder, f"../models/{model_name}", options=tf.saved_model.SaveOptions(experimental_custom_gradients=True))
+        train_tf_model(autoencoder,
+                       training_param, None, dr_param['model_name'])
+
+        tf.keras.models.save_model(
+            autoencoder, f"../models/{dr_param['model_name']}", options=tf.saved_model.SaveOptions(experimental_custom_gradients=True))
 
 
-def train_ae(autoencoder, ae_param, training_param, scaler, model_name):
+def train_sklearn_model(dr_model, training_param):
+    traffic_ds = get_dataset(**training_param)
+
+    if training_param["batch_size"] > 0:
+        for x in tqdm(traffic_ds, leave=False, position=1, desc="Train"):
+            dr_model.partial_fit(x)
+    else:
+        dr_model=dr_model.fit(traffic_ds)
+    return dr_model
+
+def train_tf_model(dr_model, training_param, scaler, model_name, dtype="float32"):
 
     train_log_dir = f'logs/{model_name}/train'
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
 
     traffic_ds = get_dataset(
-        training_param["train_paths"], ae_param["batch_size"], training_param["shuffle"], scaler)
+        training_param["train_paths"], training_param["batch_size"], training_param["shuffle"], scaler,  dtype=dtype)
 
     for i in tqdm(range(training_param["epochs"])):
 
         for x in tqdm(traffic_ds, leave=False, position=1, desc="Train"):
-            hist = autoencoder.custom_train_step(x)
 
-        nb_epochs = autoencoder.increment_epoch()
+            hist = dr_model.custom_train_step(x)
+
+        nb_epochs = dr_model.increment_epoch()
 
         with train_summary_writer.as_default():
             for key, value in hist.items():
@@ -309,21 +342,26 @@ def train_ae(autoencoder, ae_param, training_param, scaler, model_name):
 
         if nb_epochs == 1 or nb_epochs == training_param["epochs"] or nb_epochs % training_param["test_iter"] == 0:
             test_ae(2**10,
-                    scaler, model_name, training_param, autoencoder=autoencoder, step=nb_epochs)
+                    scaler, model_name, training_param, autoencoder=dr_model, step=nb_epochs)
 
 
-def visualise_latent_space(scaler, eval_param, model_name, feature_names, plot_dist=False, step=0):
-    autoencoder = tf.keras.models.load_model(
-        f"../models/{model_name}", compile=False)
+def visualise_latent_space(model_type, model_name, scaler, feature_paths, feature_names, resolution=(100,100),
+                           plot_dist=False, step=0, frac=1, dtype="float32"):
+    
+    if model_type=="pkl":
+        dr_model=GenericDRModel(**{"name":model_name, "save_type":model_type, "path":f"../models/{model_name}.pkl",
+                        "func_name":"transform",  "scaler":scaler,"threshold":0.3})
+    else:
+        dr_model=HybridModel(**{"name":model_name, "save_type":model_type, "path":f"../models/{model_name}",
+                        "func_name": "call", "ad_output_index":1, "dr_output_index":0,"scaler":scaler,"threshold":0.3,"dtype":dtype})
 
     fig = make_subplots(rows=1, cols=2)
 
     scales = []
     distance = 1.2
-    for name, info in tqdm(eval_param["feature_paths"].items()):
+    for name, info in tqdm(feature_paths.items()):
 
         if name == "Prior":
-
             fig.add_shape(type="circle",
                           xref="x", yref="y",
                           x0=-1, y0=-1,
@@ -339,43 +377,40 @@ def visualise_latent_space(scaler, eval_param, model_name, feature_names, plot_d
                 # scales.append(info[1])
             else:
                 show_scale = False
-            if info[0].endswith("scaled.csv"):
-                latent, recon = get_latent_position(
-                    autoencoder, None, info[0], eval_param["frac"])
-            else:
-                latent, recon = get_latent_position(
-                    autoencoder, scaler, info[0], eval_param["frac"])
+
+            
+            latent, recon= get_latent_position(
+                dr_model, None, info[0], frac=frac, dtype=dtype)
+            
+           
             average_recon = np.mean(recon)
-
             if name == "Benign":
-
                 benign_recon = average_recon
                 benign_latent = latent
                 benign_recons = recon
+            print(recon.shape)
+            if len(recon)>0:
+                fig.add_trace(go.Scattergl(x=latent[:, 0], y=latent[:, 1],
+                                           mode='markers',
+                                           opacity=0.5,
+                                           name=f"{name}_{average_recon:.3f}",
+                                           text=[f"{i}_{recon[i]:.3f}" for i in range(
+                                               latent.shape[0])],
+                                           legendgroup=f"{name}_{average_recon:.3f}",
+                                           marker=dict(
+                    size=10,
+                    # set color equal to a variable
+                    color=recon,
+                    colorscale=info[1],  # one of plotly colorscales
+                    showscale=show_scale,
+                    colorbar=dict(x=distance))
+                ), row=1, col=1)
 
             fig.add_trace(go.Scattergl(x=latent[:, 0], y=latent[:, 1],
                                        mode='markers',
                                        opacity=0.5,
-                                       name=f"{name}_{average_recon:.3f}",
-                                       text=[f"{i}_{recon[i]:.3f}" for i in range(
-                                           latent.shape[0])],
-                                       legendgroup=f"{name}_{average_recon:.3f}",
-                                       marker=dict(
-                size=10,
-                # set color equal to a variable
-                color=recon,
-                colorscale=info[1],  # one of plotly colorscales
-                showscale=show_scale,
-                colorbar=dict(x=distance))
-            ), row=1, col=1)
-
-            fig.add_trace(go.Scattergl(x=latent[:, 0], y=latent[:, 1],
-                                       mode='markers',
-                                       opacity=0.5,
-                                       name=f"{name}_{average_recon:.3f}",
-                                       legendgroup=f"{name}_{average_recon:.3f}",
-                                       text=[f"{i}_{recon[i]:.3f}" for i in range(
-                                           latent.shape[0])],
+                                       name=f"{name}",
+                                       legendgroup=f"{name}",
                                        marker=dict(
                 size=10,
                 # set color equal to a variable
@@ -385,7 +420,7 @@ def visualise_latent_space(scaler, eval_param, model_name, feature_names, plot_d
             ), row=1, col=2)
 
     if plot_dist:
-        av_dist = plot_latent_similarity(eval_param["resolution"], autoencoder,
+        av_dist = plot_latent_similarity(resolution, dr_model,
                                          benign_latent, benign_recons, model_name, feature_names)
         test_log_dir = f'logs/{model_name}/test'
         test_summary_writer = tf.summary.create_file_writer(test_log_dir)
@@ -427,7 +462,7 @@ def plot_latent_similarity(resolution, autoencoder, benign_latent, benign_recons
                           opacity=0.5,
                           name="benign",
                           text=[f"{i}_{benign_recons[i]:.3f}" for i in range(
-                                   benign_latent.shape[0])],
+                              benign_latent.shape[0])],
                           marker=dict(
         size=10,
         # set color equal to a variable
@@ -447,12 +482,12 @@ def plot_latent_similarity(resolution, autoencoder, benign_latent, benign_recons
                          opacity=0.5,
                          # name="max feature",
                          hover_name=[f"{max_feature_idx[i]}" for i in range(len(
-                                   max_feature_idx))],
+                             max_feature_idx))],
                          color=max_feature_idx,
                          symbol=max_idx,
                          symbol_map='identity',
 
-                         size=tf.reshape(max_feature_change, [-1])*100
+                         size=tf.reshape(max_feature_change, [-1]) * 100
                          )
 
     if return_scatter:
@@ -470,41 +505,58 @@ def plot_latent_similarity(resolution, autoencoder, benign_latent, benign_recons
 if __name__ == '__main__':
 
     alphas = [10.0]
+    denoise = [True]
+    double_recon = [False]
     losses = [
         # ["recon_loss"],
-        # ["recon_loss", "sw_loss"],
-        ["recon_loss", "entropy", "sw_loss"],
-        # ["recon_loss", "distance_loss", "sw_loss"]
-              ]
-    reduce_types = {"mean": tf.reduce_mean}
-    optimizers = {
-        "amsgrad": tf.keras.optimizers.Adam(amsgrad=True),
-        "adam": tf.keras.optimizers.Adam(),
-        "rmsprop": tf.keras.optimizers.RMSprop(),
-        # "sgd": tf.keras.optimizers.SGD()
-                  }
+        # ["recon_loss", "ranking_loss"],
 
-    scaler_path = "../../mtd_defence/models/uq/autoencoder/Cam_1_scaler.pkl"
-    training_param = {"train_paths": ["../../mtd_defence/datasets/uq/benign/Cam_1.csv"],
-                      "test_paths": {
-                        "ACK": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
-                        "SYN": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv",
-                        "UDP": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv"},
-                      "continue_training": False,
-                      "test_iter": 30,
-                      "shuffle": True,
-                      "epochs": 1000}
+        # ["recon_loss", "ranking_loss", "sw_loss"],
+        # ["recon_loss", "ranking_loss", "sliced_topo_loss"],
+        # ['ranking_loss', "sw_loss", "sliced_topo_loss"],
+        # ['ranking_loss', "sliced_topo_loss"],
+        # ["ranking_loss", "recon_loss"],
+        # ['recon_loss', "sliced_topo_loss"],
+        ['contractive_loss', 'ranking_loss', "dist_loss"],
+        # ['ranking_loss', "sw_loss", "dist_loss2"],
+        # ["ranking_loss", "topological_loss"],
+        # ["recon_loss", "sliced_topo_loss"],
+        # ["recon_loss", "contractive_loss", "topological_loss"]
+        # ["recon_loss", "topological_loss"],
+        # ["recon_loss", "sw_loss", "topological_loss"]
+        # ["recon_loss", "contractive_loss"],
+        # ["recon_loss", "sw_loss"],
+        # ["recon_loss", "sw_loss", "contractive_loss"],
+        # ["recon_loss", "entropy", "sw_loss"],
+        # ["recon_loss", "distance_loss", "sw_loss"]
+    ]
+    reduce_types = {"mean": tf.reduce_mean}
+    lr = 1e-3
+    optimizers = {
+        # "rmsprop": tf.keras.optimizers.RMSprop(),
+        # "amsgrad": tf.keras.optimizers.Adam(amsgrad=True),
+        "adam": {"class_name": "Adam",
+                 "config": {"learning_rate": lr}}
+
+        # "sgd": tf.keras.optimizers.SGD()
+    }
+
+    # scaler_path = "../../mtd_defence/models/uq/autoencoder/Cam_1_scaler.pkl"
+    scaler_type = "min_max"
+    tf_scaler_path=f"../../mtd_defence/models/uq/autoencoder/Cam_1_{scaler_type}_scaler.pkl"
+    with open(tf_scaler_path, "rb") as f:
+        tf_scaler = pickle.load(f)
+    
+    sk_scaler_path = f"../../mtd_defence/models/uq/autoencoder/Cam_1_scaler.pkl"
+    with open(sk_scaler_path, "rb") as f:
+        sk_scaler = pickle.load(f)
+        
+    
 
     if not os.path.exists("../plots"):
         os.mkdir("../plots")
 
-    with open(scaler_path, "rb") as f:
-        scaler = pickle.load(f)
 
-    if not training_param["continue_training"]:
-        fc = train_feature_cluster(training_param["train_paths"][0], 2**10)
-    else:
-        fc = None
 
     count = 0
 
@@ -530,46 +582,78 @@ if __name__ == '__main__':
 
     feature_names = [i[:i.rindex("_")] for i in feature_names]
 
-    eval_param = {"feature_paths": {
-                  "Benign": ["../../mtd_defence/datasets/uq/benign/Cam_1.csv", "deep"],
-                  "ACK": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv", "matter"],
-                  "ACK_Scaled": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding_scaled.csv", "matter"],
-                  "SYN": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv", "matter"],
-                  "UDP": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv", "matter"],
+
+
+    model_name = "tsne"
+    save_type="pkl"
+    sk_train_param = {"path": "../../mtd_defence/datasets/uq/benign/Cam_1.csv",
+                      "frac": 0.1, "read_with": "pd", "scaler": sk_scaler,
+                      "batch_size": -1,
+                      }
+    eval_param = {"model_type": save_type,
+                  "model_name":model_name,
+                  "feature_paths": {
+                      "Benign": ["../../mtd_defence/datasets/uq/benign/Cam_1.csv", "deep"],
+                      "ACK": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv", "matter"],
+                    #   "ACK_adv": ["../../mtd_defence/datasets/uq/adversarial/Cam_1/ACK_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_ACK_Flooding_iter_0.csv", "matter"],
+                    #   "SYN": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv", "matter"],
+                    #   "UDP": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv", "matter"],
                   },
+                  "scaler":None,
                   "frac": 0.05,
+                  "feature_names":feature_names,
+                  "plot_dist":False,
                   "resolution": (200, 200),
-                  "batch_size": 2**10}
+                 }
+    
+    # train(save_type, {"model_name":model_name, "config":{"n_components": 2, "perplexity":100,"n_jobs":8}}, sk_train_param)
+    # visualise_latent_space(**eval_param)
+    
+    ae_training_param={"train_paths":["../../mtd_defence/datasets/uq/benign/Cam_1.csv"],
+                       "epochs":1000,
+                       "batch_size":1024,
+                       "shuffle":True, 
+                       "continue_training":False,
+                       "test_iter":100,
+                       "test_paths": {
+                        "ACK": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
+                        "SYN": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv",
+                        "UDP": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv"
+                       
+                       }
+                       }
 
-    # for model_name in os.listdir("../models"):
-    #     test_ae(2**12, scaler, model_name,
-    #             training_param, step=1000)
-    #     print("finish", model_name)
-
-    for alpha, loss, reduce_type, optimizer in product(alphas, losses, reduce_types.items(), optimizers.items()):
+    # fc = train_feature_cluster(ae_training_param["train_paths"][0], 2**10)
+    for alpha, loss, dn, dr, reduce_type, optimizer in product(alphas, losses, denoise, double_recon, reduce_types.items(), optimizers.items()):
         reduce_name, reduce = reduce_type
-        opt_name, opt = optimizer
+        opt_name, opt_dict = optimizer
+        model_name = f"{scaler_type}_{reduce_name}_{alpha}_{'_'.join(loss)}_{opt_name}{'_denoising' if dn else ''}_2d_{lr}{'_double_recon' if dr else ''}"
+        
+        opt = tf.keras.optimizers.get(opt_dict)
+        # ae_param = {"input_dim": 100,
+        #             "latent_dim": 2,
+        #             "latent_slices": 200,
+        #             "window_size": 64,
+        #             "step_size": 1,
+        #             "batch_size": 2**7,
+        #             "fc": fc,
+        #             "reduce": reduce,
+        #             "alpha": alpha,
+        #             "include_losses": loss,
+        #             "opt": opt,
+        #             # "scaler": None
+        #             "scaler": tf_scaler,
+        #             "num_neurons": [50, 20, 10],
+        #             "denoise": dn,
+        #             "shape":"circular",
+        #             "double_recon": dr
+                    # "model_name":model_name
+        #             }
 
-        ae_param = {"inter_dim": 16,
-                    "latent_dim": 2,
-                    "latent_slices": 200,
-                    "window_size": 64,
-                    "step_size": 1,
-                    "batch_size": 2**10,
-                    "fc": fc,
-                    "reduce": reduce,
-                    "alpha": alpha,
-                    "include_losses": loss,
-                    "opt": opt,
-                    }
-
-        model_name = f"FC_circular_{reduce_name}_{alpha}_{'_'.join(loss)}_{opt_name}_act_1.0"
+        
+        eval_param["model_name"]=model_name
+        eval_param["model_type"]="tf"
         print(f"training {model_name}")
-        train("FC", "circular", ae_param,
-              training_param, scaler, model_name)
-        # print(opt)
-        # test_ae(2**12, scaler, model_name,
-        #         training_param, step=1000, verbose=True)
+        # train("FC", ae_param, ae_training_param)
 
-        visualise_latent_space(
-                            scaler, eval_param, model_name, feature_names, plot_dist=True, step=training_param["epochs"])
+        visualise_latent_space(**eval_param)
