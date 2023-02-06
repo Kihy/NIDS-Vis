@@ -154,8 +154,8 @@ def plot_decision_boundary_3p(func, q, plot_range=[[-1.5, 2.5, 200], [-2, 2.5, 1
                     color='white',
                 ),
                 start=0,
-                end=np.max(f_val),
-                size=(threshold)/5.
+                end=np.minimum(threshold * 10,np.max(f_val)),
+                size=(threshold)
                 
             )
         ))
@@ -248,8 +248,8 @@ def linear_search(direction, original, step_size, threshold, func, diff_threshol
         
         same_label_count[same_label_count == 5 ] = 0
 
-        logger.info(
-            f"step {step}, scores at {count}: {scores}, same label: {same_label}")
+        # logger.info(
+        #     f"step {step}, scores at {count}: {scores}, same label: {same_label}")
         # if different label, move in the other direction and decrease step size
         step_size[~same_label] *= -0.5
         step += step_size
@@ -528,15 +528,18 @@ def find_perpendicular_vector(directional_derivative, A, direction, logger=None)
 def boundary_traversal(baseline_nids, start_position, output_boundary_path,
                        batch_size=8, tangent_guide=None, dr_model=None,
                        sampling_method=None, end_position=None, anchor=None, run_name="", init_search="binary", max_iter=500,
-                       bidirectional=True, grad_est="fd", logger_level=logging.WARNING, eps=1e-3, step_size=1e-2, early_stopping=False,
-                       draw_plots=True):
+                       bidirectional=True, grad_est="fd", logger_level=None, eps=1e-3, step_size=1e-2, early_stopping=False,
+                       draw_plots=True, adv_idx=None):
 
     # set up logger
     threshold = baseline_nids.threshold
     nids_name = baseline_nids.name
 
-    logger = setup_logger(f'{nids_name}_{run_name}_{threshold:.3f}',
-                          f'boundary_logs/{nids_name}_{run_name}_{threshold:.3f}.log', logger_level)
+    if logger_level is None:
+        logger=logging.getLogger('dummy') 
+    else:
+        logger = setup_logger(f'{nids_name}_{run_name}_{threshold:.3f}',
+                            f'boundary_logs/{nids_name}_{run_name}_{threshold:.3f}.log', logger_level)
 
     feature_range = (scaler.data_max_ - scaler.data_min_)
     
@@ -563,10 +566,24 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
         raise Exception("invalid gradient estimate")
 
    
+    if end_position is None:
+        if init_search != "linear":
+            raise ValueError(
+                "if end position is not provided then init_search must be linear")
+    elif end_position.ndim==1 or end_position.shape[0]==1:
+        end_position = np.tile(end_position, [dataset.shape[0], 1])
+    elif end_position.shape[0]!=dataset.shape[0]:
+        raise ValueError("end position shape must match start position")
+    
+    
     count = 0
 
-    for x_start in tqdm(dataset):
+    for x_start, x_end in tqdm(zip(dataset,end_position)):
+        if adv_idx is not None:
+            count=adv_idx
+        
         output_bd=f"{output_boundary_path}{count}.csv"
+            
         logger.info(f"traversing {count}")
         logger.info("="*50)
         
@@ -580,12 +597,12 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
             profiles = []
             ord = 2
         with open(output_bd, "w") as adv_f:
-
-
             if not isinstance(x_start, np.ndarray):
                 x_start = x_start.numpy()
             if x_start.ndim == 1:
                 x_start = np.expand_dims(x_start, axis=0)
+            if x_end.ndim == 1:
+                x_end = np.expand_dims(x_end, axis=0)
 
             start_label, start_score = baseline_nids.decision(x_start, True)
             logger.info(f"x start score: {start_score}, label: {start_label}")
@@ -593,14 +610,9 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
             np.savetxt(adv_f, x_start, delimiter=',')
 
             # find initial bondary sample
-            if end_position is None:
-                if init_search != "linear":
-                    raise ValueError(
-                        "if end position is not provided then init_search must be linear")
-            else:
-                x_end = np.tile(end_position, [x_start.shape[0], 1])
-                end_label, end_score = baseline_nids.decision(x_end, True)
-                logger.info(f"x end score: {end_score}, label: {end_label}")
+            
+            end_label, end_score = baseline_nids.decision(x_end, True)
+            logger.info(f"x end score: {end_score}, label: {end_label}")
 
             if init_search == "binary":
                 if start_label == end_label:
@@ -611,14 +623,14 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
                     x_end, x_start, eps, baseline_nids.decision, logger=logger)
 
             elif init_search == "linear":
-                x_n_score=0
+                x_n_score=start_score
                 x_n=np.copy(x_start)
                 while np.abs(x_n_score-threshold)>eps:
                     # find the search direction
                     if end_position is None: 
                         logger.info("search for boundary point with gradient")
                         init_search_direction=grad_func(baseline_nids.predict,
-                                    x_start, delta_t=step_size) * np.sign(threshold-start_score)
+                                    x_n, delta_t=1e-5) * np.sign(threshold-start_score)
                     else:
                         logger.info("search for boundary point with end sample")
                         if feature_range is None:
@@ -628,7 +640,7 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
 
                     x_n, x_n_score = linear_search(
                         init_search_direction, x_n, np.full(
-                            start_score.shape, 1e-1), threshold, 
+                            start_score.shape, 0.1), threshold, 
                         baseline_nids.decision, diff_threshold=eps, logger=logger, feature_range=feature_range, max_iter=20)
                 
                 if end_position is None:
@@ -680,6 +692,8 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
                 guiding_dir/=feature_range
                 boundary_direction/=feature_range
                 
+            
+                
             tangent_d = guiding_dir
             direction = 1
             step_size = np.full(start_score.shape, step_size)
@@ -687,8 +701,10 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
             corrected_distance=0
             symbols = ["star", "triangle-up"]
             
+            
             A = np.hstack([guiding_dir.T, boundary_direction.T])
             A, _ = np.linalg.qr(A)
+            
             early_stop_flag=False
             logger.info("*"*50)
             for t in tqdm(range(max_iter)):
@@ -714,7 +730,7 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
                 logger.info(f"gradient at x_n {grad_f/np.linalg.norm(grad_f,axis=1,keepdims=True)}")
                 
                 tangent_d=find_perpendicular_vector(grad_f, A, direction, logger=logger)
-                
+                                
                 # find tangent direction in boundary plane
                 res, residual, _, _ = np.linalg.lstsq(A, tangent_d.T, rcond=None)
                 res /= np.linalg.norm(res, axis=0)
@@ -859,7 +875,12 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
                 
                 
                 if early_stopping:
-                    theta=angle((x_init-x_start)/feature_range, (x_n-x_start)/feature_range)
+                    if early_stopping=="start":
+                        check_point=x_start
+                    else:
+                        check_point=x_end
+                    theta=angle((x_init-check_point)/feature_range, (x_n-check_point)/feature_range)
+                    
                     logger.info(f"theta {np.degrees(theta)}")
                     #check if angle is close to pi
                     if bidirectional:
@@ -881,6 +902,13 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
             print(f"number of corrected points: {corrected_count[0]}")
             print(f"number of disjoint points {corrected_count[1]}")
             
+            #save anchor and end points 
+            if anchor is not None:
+                np.savetxt(adv_f, anchor, delimiter=',')
+                adv_f.flush()
+            
+            np.savetxt(adv_f, x_end, delimiter=',')
+            adv_f.flush()
             
             if draw_plots:
                 dist_ben = np.squeeze(dist_ben)
@@ -928,14 +956,16 @@ def boundary_traversal(baseline_nids, start_position, output_boundary_path,
                 fig.tight_layout()
                 fig.savefig(f"exp_figs/meta_plots/{nids_name}_{run_name}_{count}.png")
                 
-                
-                np.savetxt(adv_f, x_end, delimiter=',')
+                if anchor is not None:
+                    symbols.append("triangle-up")
                 symbols.append("star")
+                
+            
 
                 plot_decision_boundary_3p(baseline_nids.predict, A, plot_range=None, boundary_file=output_bd,
-                                    symbols=symbols, adv_samples=anchor, threshold=threshold,feature_range=feature_range,
+                                    symbols=symbols, threshold=threshold, feature_range=feature_range,
                                     file_name=f"{nids_name}_{threshold:.3f}_{init_search}_{tangent_guide}_{run_name}_{count}")
-            
+        
             count += 1
 
 
@@ -1203,14 +1233,14 @@ def gini_index(x):
     return p_pos
 
 
-def read_adversarial_file(log_file, adv_csv, adv_ori_csv, out_path, idx_offset, target_adv_idx):
+def read_adversarial_file(log_file, adv_csv, adv_ori_csv, idx_offset, target_adv_idx, out_path=None):
 
     count = 0
     with open(log_file, "r") as f:
         record = False
         c = 0
         for line in f.readlines():
-
+            
             if line.startswith("original"):
                 record = True
                 continue
@@ -1230,15 +1260,15 @@ def read_adversarial_file(log_file, adv_csv, adv_ori_csv, out_path, idx_offset, 
                 count += 1
             else:
                 continue
-
     adv_features = pd.read_csv(
         adv_csv, skiprows=adv_start_idx, nrows=num_craft_pkt + 1, header=None)
     ori_adv_features = pd.read_csv(
         adv_ori_csv, skiprows=mal_idx + 1, nrows=1, header=None, usecols=list(range(100)))
 
     result = pd.concat([ori_adv_features, adv_features])
-    with open(out_path, "w") as adv_f:
-        np.savetxt(adv_f, result.to_numpy(), delimiter=',')
+    if out_path is not None:
+        with open(out_path, "w") as adv_f:
+            np.savetxt(adv_f, result.to_numpy(), delimiter=',')
     return result.to_numpy("float32")
 
 
@@ -1273,8 +1303,6 @@ def get_closest_benign_sample(benign_path, adv_example, transform_func=None):
     traffic_ds = get_dataset(benign_path, 1024,
                              scaler=None, frac=1, read_with="tf", dtype="float32",
                              seed=42, skip_header=True, shuffle=True)
-    # first one is malicious
-    adv_example = adv_example[1:]
 
     if transform_func is not None:
         adv_example = transform_func(adv_example)
@@ -1311,10 +1339,7 @@ def get_closest_benign_sample(benign_path, adv_example, transform_func=None):
             
             closest_dist[update_idx] = current_closest_dist[update_idx]
             
-            
             nearest_sample[update_idx[0]] = current_nearest_sample[update_idx[0]]
-            
-    
 
     print("processed", total)
     return nearest_sample
@@ -1371,9 +1396,10 @@ if __name__ == '__main__':
     batch_size = 10
     sampling_method = None
     distinguish_start_end = sampling_method == None
-    adv_atk = "kitsune_0.5_10_3_False_pso0.5"
+    adv_atk = "autoencoder_0.1_10_3_False_pso0.5"
 
     benign_path = "../../mtd_defence/datasets/uq/benign/Cam_1.csv"
+    ack_flooding_path="../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv"
     atk_type = "bt"
     # adv_path = f"../../mtd_defence/datasets/uq_network/adversarial/decision_boundary_adversarial/db_vis_0.01_20_3_False_pso0.5_None/csv/decision_boundary_adversarial_iter_0.csv"
     # ae_name = "min_max_mean_10.0_recon_loss_sw_loss_contractive_loss_adam_denoising_2d_0.001_double_recon"
@@ -1396,8 +1422,11 @@ if __name__ == '__main__':
     elif dr_models[dr_model_name]["type"] == "dimensionality_reduction":
         dr_model = GenericDRModel(**dr_models[dr_model_name])
 
-    target_adv_idx = [10]
-
+    seed=42
+    rng=np.random.default_rng(seed)
+    #randomly choose 1000 adversarial examples
+    # target_adv_idx = rng.choice(3000, 1000, replace=False)
+    target_adv_idx=[2036, 899]
     bidirectional = True
 
     default_nids = GenericADModel("baseline_kitsune",  **{
@@ -1432,23 +1461,26 @@ if __name__ == '__main__':
         #                      "nids_model": default_nids}
 
         # adv_samples=mal_sample+craft_sample+adv_sample
-        # adv_samples = read_adversarial_file(f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/ACK_Flooding/{adv_atk}/logs/Cam_1_ACK_Flooding_iter_0.txt",
-        #                                     f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/ACK_Flooding/{adv_atk}/csv/Cam_1_ACK_Flooding_iter_0.csv",
-        #                                     f"../../mtd_defence/datasets/{dataset}/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
-        #                                     adv_path, 854685, i)
+        adv_samples = read_adversarial_file(f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/ACK_Flooding/{adv_atk}/logs/Cam_1_ACK_Flooding_iter_0.txt",
+                                            f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/ACK_Flooding/{adv_atk}/csv/Cam_1_ACK_Flooding_iter_0.csv",
+                                            f"../../mtd_defence/datasets/{dataset}/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
+                                            854685, i, out_path=None)
         
-        # benign_sample = get_closest_benign_sample(
-        #     benign_path, adv_samples, scaler.transform)
+        adversarial_sample = adv_samples[None, -1]
+
+        benign_sample = get_closest_benign_sample(
+            benign_path, adversarial_sample, scaler.transform)
 
         # benign_sample=benign_sample[None,-1]
-        # adversarial_sample = adv_samples[None, -1]
-        # mal_sample = adv_samples[None, 0]
-        seed=42
-        benign_sample=sample_n_from_csv(benign_path, 1000, total_rows=854685, seed=seed)
+
+        mal_sample = adv_samples[None, 0]
+        
+        # benign_sample=sample_n_from_csv(benign_path, 1000, total_rows=854685, seed=seed)
+        # ack_flooding_sample=sample_n_from_csv(ack_flooding_path, 1000, total_rows=1288203, seed=seed)
         
         
         # bt_config={"start":("adv", adversarial_sample),"end": ("mal", mal_sample), "anchor":("ben",benign_sample)}
-        bt_config={"start":("ben",benign_sample), "end": ("none", None), "anchor":("none",None)}
+        bt_config={"start":("adv_ack",adversarial_sample), "end": ("ack", mal_sample), "anchor":("ben",benign_sample)}
         
         # benign_sample=get_benign_sample(benign_path, i*100+1000)
 
@@ -1468,7 +1500,7 @@ if __name__ == '__main__':
                     os.mkdir(boundary_path)
                 
                 files[f"{nids_name}_boundary_{i}_{t:.3f}"] = {"file_path": boundary_path, "color_scale": "balance", "shuffle": False,
-                                                              "frac": 1, "batch_size": 1, "plot_batch_size": benign_sample.shape[0],
+                                                              "frac": 1, "batch_size": 1, "plot_batch_size": bt_config["start"][1].shape[0],
                                                               "skip_header": False, "draw_type": "boundary",
                                                               "nids_model": nids_model,
                                                               "opacity": 0.8, "start_color": "blue", "end_color": "red", "symbol": "star-dot"}
@@ -1477,8 +1509,8 @@ if __name__ == '__main__':
                     baseline_nids=nids_model, dr_model=dr_model,
                     output_boundary_path=boundary_path, start_position=bt_config["start"][1], batch_size=1,
                     tangent_guide="anchor", sampling_method=sampling_method, end_position=bt_config["end"][1], anchor=bt_config["anchor"][1], run_name=run_name,
-                    init_search="linear", max_iter=1000, bidirectional=bidirectional, grad_est="fd", logger_level=logging.INFO,
-                    eps=1e-6*config["params"]["scale_output"], step_size=1e-2, early_stopping=True, draw_plots=False)
+                    init_search="linear", max_iter=1000, bidirectional=bidirectional, grad_est="fd", logger_level=None,
+                    eps=1e-6*config["params"]["scale_output"], step_size=1e-2, early_stopping="start", draw_plots=False, adv_idx=i)
 
     # draw_db(dr_model, files,
     #         heat_map=-1, file_name=f"{dr_model.name}_{sampling_method}", bidirectional=bidirectional)
