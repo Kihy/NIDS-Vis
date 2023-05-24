@@ -161,6 +161,9 @@ plots/
 cython_debug/
 code/exp_csv/
 adversarial_data/
+data/
+configs/
+
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

@@ -15,8 +15,41 @@ from collections import defaultdict
 import plotly.express as px
 import pickle
 import matplotlib.pyplot as plt
+import json
+from xpysom import XPySom
+import sys
+sys.path.insert(1, '../../mtd_defence/code')
+import train_mtd_am
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 rng = default_rng()
+
+
+def sample_d_sphere(b, n, d):
+    u = np.random.normal(0,1,(b,n,d))  
+    d=np.sum(u**2, axis=-1,keepdims=True) **(0.5)
+    coord=u/d
+    return coord
+
+class SOM():
+    def __init__(self, distance, n_func, size, sigma, learning_rate):
+        self.som = XPySom(size, size, 100, sigma=sigma, learning_rate=learning_rate,
+                           neighborhood_function=n_func, activation_distance=distance)
+
+    def fit(self, x):
+        self.som.train(x,1)
+
+    def predict(self, x):
+        return self.decision_function(x)
+
+    def score_samples(self, x):
+        return self.decision_function(x)
+
+    def decision_function(self, x):
+        return np.linalg.norm(self.som.quantization(x) - x, axis=1)
+
+    def process(self, x):
+        return self.decision_function([x])[0]
 
 def load_model(save_type, path):
     if save_type=="tf":
@@ -30,14 +63,18 @@ def load_model(save_type, path):
 
 class BaseModel:
     def __init__(self, name, save_type, path, func_name, ad_output_index = None, 
-                 dr_output_index=None, threshold=None,scale_output=1, flip_score=False, scaler=None, dtype="float64", **kwargs):
+                 dr_output_index=None, threshold=None, flip_score=False, scaler=None, dtype="float64", min_feature=None,abbrev=None, **kwargs):
         model=load_model(save_type, path)
         self.pred_func=getattr(model, func_name)
         if hasattr(model, "inverse_transform"):
             self.inverse_func=model.inverse_transform
         else:
             self.inverse_func=None
-        self.scaler=scaler 
+        if isinstance(scaler, str):
+            with open(scaler, "rb") as f:
+                self.scaler = pickle.load(f)
+        else:
+            self.scaler=scaler         
         self.save_type=save_type
         self.ad_output_index=ad_output_index
         self.dr_output_index=dr_output_index
@@ -45,7 +82,9 @@ class BaseModel:
         self.name=name
         self.threshold=threshold
         self.dtype=dtype
-        self.scale_output=scale_output
+        self.min_feature=min_feature
+        self.abbrev=abbrev
+
 
 class DimensionalityReductionMixin:
     def transform(self, x):
@@ -71,7 +110,7 @@ class AnomalyDetectionMixin:
             
         x=x.astype(self.dtype)
         
-        scores=self.pred_func(x)* self.scale_output
+        scores=self.pred_func(x)
         # if inverse transformation is available, it is a dimensionality reduction model
         if self.inverse_func:
             decoded=self.inverse_func(scores)
@@ -89,6 +128,8 @@ class AnomalyDetectionMixin:
         
         return scores 
     def decision(self, x, return_score=False):
+        if self.threshold is None:
+            raise AttributeError("No threshold set, only predict() is available")
         scores=self.predict(x)
         if return_score:
             return scores>self.threshold, scores
@@ -124,11 +165,38 @@ def get_map_func(scaler, dtype="float32"):
         return data
     return parse_csv
 
+def get_nids_model(model_id, threshold_key="100", load=True):
+    with open("configs/nids_models.json") as f:
+        nids_db=json.load(f)
+    if "thresholds" in nids_db[model_id].keys():
+        threshold=nids_db[model_id]["thresholds"][threshold_key]
+    else:
+        threshold=None
+    if load:
+        return GenericADModel(model_id,  threshold=threshold,**nids_db[model_id])
+    else:
+        ret_dict=dict(nids_db[model_id])
+        ret_dict["threshold"]=threshold
+        ret_dict["name"]=model_id
+        return ret_dict
 
-def get_dataset(path, batch_size, shuffle=False, scaler=None, frac=1, read_with="tf", seed=None, dtype="float32", skip_header=True):
+def get_files(file_ids):
+    result=[]
+    with open("configs/files.json") as f:
+        file_db=json.load(f)
+        for file_id in file_ids:
+            file_db[file_id]["name"]=file_id
+            result.append(file_db[file_id])
+    return result
+    
+    
+
+def get_dataset(path, batch_size, shuffle=False, scaler=None, frac=1, total_rows=None, read_with="tf", seed=None, drop_reminder=True, dtype="float32", skip_header=True):
 
     if read_with == "tf":
         tf_ds = tf.data.TextLineDataset(path)
+        if total_rows:
+            tf_ds=tf_ds.take(total_rows)
         if skip_header:
             tf_ds = tf_ds.skip(1)
 
@@ -136,12 +204,12 @@ def get_dataset(path, batch_size, shuffle=False, scaler=None, frac=1, read_with=
             tf_ds = tf_ds.shuffle(
                 1024 * 300, reshuffle_each_iteration=True, seed=seed)
 
-        tf_ds = tf_ds.batch(batch_size, drop_remainder=True)
+        tf_ds = tf_ds.batch(batch_size, drop_remainder=drop_reminder)
 
         if frac != 1:
             tf_ds = tf_ds.filter(
                 lambda x: tf.random.uniform(shape=[], seed=seed) < frac)
-
+           
         tf_ds = tf_ds.map(get_map_func(scaler, dtype=dtype))
 
     elif read_with == "pd":

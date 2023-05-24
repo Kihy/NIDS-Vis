@@ -15,9 +15,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 import logging
-import scipy 
-sys.path.insert(1, '../../mtd_defence/code')
-import train_mtd_am
+import itertools
 
 rng = np.random.default_rng(42)
 
@@ -45,83 +43,110 @@ def setup_logger(name, log_file, logger_level=logging.WARNING):
     return logger
 
 
-def feature_to_2d(x_0, features, q, func, feature_range=None):
+def feature_to_2d(x_0, features, q, func=None, feature_range=None):
     if feature_range is None:
         diff_vector = (features-x_0)
-    else:    
+    else:
         diff_vector = (features-x_0)/feature_range
     result, residual, _, _ = np.linalg.lstsq(q, diff_vector.T, rcond=None)
-    
+
     if feature_range is None:
         plane_out = x_0+np.einsum("ki,lk->il", result, q)
     else:
-        plane_out = x_0+np.einsum("ki,lk,l->il", result, q,feature_range)
+        plane_out = x_0+np.einsum("ki,lk,l->il", result, q, feature_range)
 
     plane_out = plane_out.reshape([-1, q.shape[0]])
 
     feature_diff = np.sum(np.abs(plane_out-features), axis=1)
-    print(feature_diff.shape)
-    print(f"max feature diff {np.max(feature_diff)}")
-    print(f"max residual {np.max(residual)}")
+    if np.max(residual) > 1e-10:
+        print(feature_diff.shape)
+        print(f"max feature diff {np.max(feature_diff)}")
+        print(f"max residual {np.max(residual)}")
+        print(f"max idx {np.argmax(residual)}")
 
-    pred_val = func(plane_out)
-    true_val = func(features)
+    if func:
+        pred_val = func(plane_out)
+        true_val = func(features)
 
-    max_error = np.argmax(np.abs(pred_val-true_val))
-    print(
-        f"max error index {max_error} plane val {pred_val[max_error]} true val {true_val[max_error]}")
-   
-    return result, pred_val, true_val
+        return result, pred_val, true_val
+    else:
+        return result
 
 
-def plot_decision_boundary_3p(func, q, plot_range=[[-1.5, 2.5, 200], [-2, 2.5, 150]], boundary_file=None, symbols=None,
-                              adv_samples=None, threshold=1, file_name="test", feature_range=None):
+def polygon_area(x, y):
+    if x.size==0:
+        return 0
+    correction = x[-1] * y[0] - y[-1] * x[0]
+    main_area = np.dot(x[:-1], y[1:]) - np.dot(y[:-1], x[1:])
+    return 0.5*np.abs(main_area + correction)
 
-    boundary_path = np.genfromtxt(boundary_file, delimiter=",")
+
+def plot_decision_boundary_3p(func, boundary_file, plot_range=None, half_way=None, symbols=None,
+                              threshold=1, file_name="test", feature_range=None, plot_contour=True, 
+                              ):
+    if plot_contour:
+        fig = make_subplots(rows=1, cols=2, specs=[
+                            [{"type": "surface"}, {"type": "scattergl"}]])
+        
+
+    if isinstance(boundary_file,str):
+        boundary_file = np.genfromtxt(boundary_file, delimiter=",")
+
+    x_0=boundary_file[np.newaxis, 0]
     
-    x_0 = boundary_path[np.newaxis, 0]
-    
+    boundary, A=np.split(boundary_file, [-2])
     # plot decision boundary
     boundary_result, pred_val, true_val = feature_to_2d(
-        x_0, boundary_path, q, func, feature_range)
+        x_0, boundary, A.T, func, feature_range)
 
-    fig = go.Figure(go.Scattergl(x=boundary_result[0], y=boundary_result[1], name="boundary", mode="markers",
-                                 hovertext=[
-        f"index: {i}, plane_as: {val}, true_as: {true_val[i]}" for i, val in enumerate(pred_val)],
-        marker=dict(size=10,
-                    color=true_val,
-                    symbol=symbols,
-                    line=dict(
-                        color='MediumPurple',
-                        width=2
-                    )
-                    )))
-    # plot adversarial examples
-    if adv_samples is not None:
-        adv_result, pred_val, true_val = feature_to_2d(
-            x_0, adv_samples, q, func,feature_range)
-        fig.add_trace(go.Scattergl(x=adv_result[0], y=adv_result[1], name="adv samples", mode="markers",
-                                   hovertext=[
-                                       f"index: {i}, plane_as: {val}, true_as: {true_val[i]}" for i, val in enumerate(pred_val)],
-                                   marker=dict(size=10,
-                                               color=true_val,
-                                               symbol="triangle-up",
-                                               line=dict(
-                                                   color='MediumPurple',
-                                                   width=2
-                                               )
-                                               )))
-        result = np.hstack([boundary_result, adv_result])
-    else:
-        result = boundary_result
-    
+    # reorder boundary and estimate area
+    # remove last two
+    ordered_boundary = boundary_result[:, :-2]
+    # reorder boundary points
+    if half_way:
+        ordered_boundary = np.hstack(
+            (ordered_boundary[:, :half_way-1], ordered_boundary[:, half_way:-1][:, ::-1]))
+
+    area = polygon_area(ordered_boundary[0], ordered_boundary[1])
+
+    if plot_contour:
+        fig.add_trace(go.Scatter3d(x=boundary_result[0], y=boundary_result[1], z=true_val,  name="boundary", mode="markers",
+                                    hovertext=[
+            f"index: {i}, plane_as: {val}, true_as: {true_val[i]}" for i, val in enumerate(pred_val)],
+            marker=dict(size=5,
+                        color=true_val,
+                        symbol=symbols,
+                        colorscale='greys',
+                        line=dict(
+                            color='white',
+                            width=3
+                        )
+                        ),
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scattergl(x=boundary_result[0], y=boundary_result[1], name="boundary", mode="markers",
+                                    hovertext=[
+            f"index: {i}, plane_as: {val}, true_as: {true_val[i]}" for i, val in enumerate(pred_val)],
+            marker=dict(size=10,
+                        color=true_val,
+                        opacity=0.5,
+                        symbol=symbols,
+                        line=dict(
+                            color='MediumPurple',
+                            width=2
+                        )
+                        ),
+        ), row=1, col=2)
+
     # plot contour
     if plot_range is None:
-        
         dir1 = np.linspace(np.min(
-            result[0])-np.ptp(result[0])*0.1, np.max(result[0])+np.ptp(result[0])*0.1, 100)
+            boundary_result[0])-np.ptp(boundary_result[0])*0.05, np.max(boundary_result[0])+np.ptp(boundary_result[0])*0.05, 200)
         dir2 = np.linspace(np.min(
-            result[1])-np.ptp(result[1])*0.1, np.max(result[1])+np.ptp(result[1])*0.1, 120)
+            boundary_result[1])-np.ptp(boundary_result[1])*0.05, np.max(boundary_result[1])+np.ptp(boundary_result[1])*0.05, 200)
+    elif len(plot_range) == 1:
+        dir1 = np.linspace(*plot_range[0])
+        dir2 = np.linspace(*plot_range[0])
     else:
         dir1 = np.linspace(*plot_range[0])
         dir2 = np.linspace(*plot_range[1])
@@ -131,39 +156,66 @@ def plot_decision_boundary_3p(func, q, plot_range=[[-1.5, 2.5, 200], [-2, 2.5, 1
     coord_mat = np.dstack([xv, yv])
 
     if feature_range is None:
-        input_val = x_0+np.einsum("ijk,lk->ijl", coord_mat, q)
-    
-    else:
-        input_val = x_0+np.einsum("ijk,lk,l->ijl", coord_mat, q, feature_range)
-    
-    input_val = input_val.reshape([-1, q.shape[0]])
+        input_val = x_0+np.einsum("ijk,kl->ijl", coord_mat, A)
 
+    else:
+        input_val = x_0+np.einsum("ijk,kl,l->ijl", coord_mat, A, feature_range)
+
+    input_val = input_val.reshape([-1, A.shape[1]])
+    input_val = np.nan_to_num(input_val)
     f_val = func(input_val)
     f_val = f_val.reshape(xv.shape)
-    fig.add_trace(
-        go.Contour(
-            z=f_val,
-            x=dir1,  # horizontal axis
-            y=dir2,  # vertical axis
-            opacity=0.4,
-            
-            contours=dict(
-                showlabels=True,  # show labels on contours
-                labelfont=dict(  # label font properties
-                    size=12,
-                    color='white',
-                ),
-                start=0,
-                end=np.minimum(threshold * 10,np.max(f_val)),
-                size=(threshold)
-                
-            )
-        ))
+    if plot_contour:
+        fig.add_trace(go.Surface(z=f_val, x=dir1, y=dir2,
+                                 contours={"z": {"show": True,
+                                                 "project_z": True,
+                                                 "start": 0, "end": threshold * 1.1,
+                                                 "size": (threshold)/10.},
+                                           "x": go.surface.contours.X(highlight=False),
+                                           "y": go.surface.contours.Y(highlight=False)},
 
-    # reverse order
-    fig.data = fig.data[::-1]
+                                 showlegend=True), row=1, col=1)
 
-    fig.write_html(f"exp_figs/db_vis/{file_name}.html")
+        fig.add_trace(
+            go.Contour(
+                z=f_val,
+                x=dir1,  # horizontal axis
+                y=dir2,  # vertical axis
+                opacity=0.4,
+                line_smoothing=0,
+                contours=dict(
+                    showlabels=True,  # show labels on contours
+                    labelfont=dict(  # label font properties
+                        size=12,
+                        color='white',
+                    ),
+                    start=np.min(f_val), end=threshold * 1.1, size=np.abs(threshold-np.min(f_val))/10.
+                )
+            ), row=1, col=2)
+
+        fig.update_layout(
+            width=1600,
+            height=800
+        )
+
+        fig.update_yaxes(
+            scaleanchor="x",
+            scaleratio=1,
+            row=1, col=2
+        )
+        fig.update_layout(
+            scene_aspectmode='manual', scene_aspectratio=dict(x=1, y=1, z=1),
+
+        )
+
+        # # reverse order
+        fig.data = fig.data[::-1]
+
+        # fig.write_html(f"exp_figs/db_vis/{file_name}.html")
+
+        fig.write_html(f"exp_figs/db_vis/{file_name}_3d.html")
+
+    return f_val, area
 
 
 def binary_search(target, original, threshold, func, logger=None):
@@ -171,7 +223,7 @@ def binary_search(target, original, threshold, func, logger=None):
     start = np.zeros((batch_size,))
     end = np.ones((batch_size,))
     # positive_midx = np.copy(target)
-    
+
     logger.info(f"begin binary search")
 
     while np.all((end - start) > threshold):
@@ -195,88 +247,56 @@ def linear_sample(x_start, x_end, samples):
         x_start[np.newaxis, :, :] + (1 - all_steps) * x_end[np.newaxis, :, :]
     return np.reshape(lin_samples, [-1, x_start.shape[1]])
 
+
 def take_step(start, step, direction, feature_range=None):
     if feature_range is None:
         return start+np.einsum("j,jk->jk", step, direction)
     else:
-        return start+np.einsum("j,jk,k->jk", step, direction,feature_range)
+        return start+np.einsum("j,jk,k->jk", step, direction, feature_range)
 
-def linear_search(direction, original, step_size, threshold, func, diff_threshold=1e-3, step_count=0, logger=None, 
-                  feature_range=None, max_iter=50, check_both_dir=True, return_step=False):
+
+def linear_search(direction, original, step_size, threshold, func, logger, diff_threshold=1e-3, 
+                  feature_range=None, max_iter=50):
+
     # ensure direction is unit vector
     logger.info("begin linear search")
-    direction/=np.linalg.norm(direction)
+    direction /= np.linalg.norm(direction)
 
-    step = np.copy(step_size)
+    step = np.zeros(step_size.shape)
     count = np.zeros(step_size.shape)
-    same_label_count = np.zeros(step_size.shape)
-    
+
     prev_label, scores = func(original, True)
+    
+    if np.all(np.abs(threshold - scores)<=diff_threshold):
+        logger.info(f"initial score {scores}, already at boundary")
+        return original, scores, step
 
-    closest_score = np.copy(scores)
-    closest_step = np.zeros(step_size.shape)
-
-    # check direction does make anomaly score closer
-    if check_both_dir:
-        search_x = take_step(original, step, direction, feature_range) 
-        _, test_scores = func(search_x, True)
-        logger.info(f"test score {test_scores}, test step {step}")
-
-        # check if they are in the same direction
-        step_size[np.sign(threshold-scores) != np.sign(test_scores-scores)] *= -1
-        step = np.copy(step_size)
-
-    logger.info(f"initial score {scores}, initial step size {step_size}")
 
     while np.any(np.abs(threshold - scores) > diff_threshold):
+        step += step_size
+        
         search_x = take_step(original, step, direction, feature_range)
         label, scores = func(search_x, True)
-
-        # # update closest score and step
-        closer_idx = np.abs(
-            closest_score - threshold) > np.abs(scores - threshold)
-        closest_score[closer_idx] = scores[closer_idx]
-        closest_step[closer_idx] = step[closer_idx]
 
         # check if same label
         same_label = (label == prev_label)
 
-        same_label_count[same_label] += 1
+        logger.debug(
+            f"step {step}, scores at {count}: {scores}, same label: {same_label}, step size {step_size}")
 
-        same_label_count[~same_label] = 0
-        step_size[same_label_count == 5] *= 2
-        
-        same_label_count[same_label_count == 5 ] = 0
-
-        # logger.info(
-        #     f"step {step}, scores at {count}: {scores}, same label: {same_label}")
         # if different label, move in the other direction and decrease step size
         step_size[~same_label] *= -0.5
-        step += step_size
-
         count[~same_label] = 0
 
         # update previous label and score
         prev_label = label
         count += 1
-        if np.all(count > max_iter):
-            fail_idx = np.abs(threshold - scores) > diff_threshold
-
-            closest_x = take_step(original, closest_step, direction, feature_range)
-            _, closest_score = func(closest_x, True)
-
-            logger.warning(
-                f"linear search failed, closest score {closest_score[fail_idx]}")
-            logger.info("-"*50)
-            if return_step:
-                return closest_x, closest_score, closest_step
-            else:
-                return closest_x, closest_score
+        
+        if np.all(count >= max_iter):
+            break
     logger.info("-"*50)
-    if return_step:
-        return search_x, scores, step-step_size
-    else:
-        return search_x, scores
+    
+    return search_x, scores, step
 
 
 def gen_random_adv_sample2(x_star, feature_range, func, threshold):
@@ -342,13 +362,12 @@ def perpendicular_vector(vector, direction=None):
     return perp
 
 
-
 def intersection_vector(A, normal, prev, logger=None):
-    dot_prod=np.einsum("ij,ki->kj",A,normal)
+    dot_prod = np.einsum("ij,ki->kj", A, normal)
 
-    normal/=np.linalg.norm(normal, axis=1)
-    dot1=dot_prod[:,0]
-    dot2=dot_prod[:,1]
+    normal /= np.linalg.norm(normal, axis=1)
+    dot1 = dot_prod[:, 0]
+    dot2 = dot_prod[:, 1]
 
     # if close to zero, return previous value
     if (np.abs(dot1) < 1e-9).any() and (np.abs(dot2) < 1e-9).any():
@@ -360,19 +379,19 @@ def intersection_vector(A, normal, prev, logger=None):
     #     return -A[None,:,0]
     # elif (np.abs(dot2)<1e-9):
     #     return -A[None,:,1]
-    
-    coef=np.vstack([np.full((normal.shape[0]),1), -dot1/dot2])
 
-    direction=np.einsum("ij, jk->ki", A, coef)
+    coef = np.vstack([np.full((normal.shape[0]), 1), -dot1/dot2])
+
+    direction = np.einsum("ij, jk->ki", A, coef)
     if logger is not None:
         logger.info(f"dot1 {dot1}, dot2 {dot2}")
 
     # normalise direction
     direction /= np.linalg.norm(direction)
-    
-    if np.abs(angle(prev, direction)-np.pi)<0.5:
-        direction*=-1
-    
+
+    if np.abs(angle(prev, direction)-np.pi) < 0.5:
+        direction *= -1
+
     return direction
 
 
@@ -484,499 +503,449 @@ def modified_hsj(baseline_kitsune, scaler_path, benign_path, adv_path, threshold
                 break
 
 
-def step_size_estimate(func, x_n, step_size, tangent_d, feature_range, logger=None):
-    test_sample=take_step(x_n, step_size, tangent_d, feature_range)
-    test_score=func(test_sample)
-    d=np.abs(test_score-func(x_n))
+def step_size_estimate(func, x_n, step_size, tangent_d, feature_range, err, logger=None):
+    forward_sample = take_step(x_n, step_size, tangent_d, feature_range)
+    backward_sample = take_step(x_n, step_size, -tangent_d, feature_range)
     
-    R=(step_size**2+d**2)/(2*d) 
+    y_val=func(np.vstack([backward_sample,x_n,forward_sample]))
+    x_val=np.array([-step_size[0],0,step_size[0]])
+    
+    R=circle_radius(x_val,y_val)
+    # R = (step_size**2+d**2)/(2*d)
     if logger is not None:
-        logger.info(f"step size {step_size} d {d} estimated radius {R}")
-    return R*0.018
-    
-    
+        logger.info(f"step size {step_size} err {err} estimated radius {R}")
+        
+    # return R*0.018
+    return np.sqrt(2*err*R-err**2)
+
 
 def curvature(func, x, grad, v=None):
     def grad_func(x):
         return gradient_estimate(func, x, 1e-6)
 
     H = gradient_estimate(grad_func, x, 1e-6)
-    grad_mag=np.linalg.norm(grad,axis=1)
-    if v is None:    
-        P=np.identity(grad.shape[0])-np.einsum("ij,ik->ijk", grad, grad)
-        matrix=1/grad_mag * np.einsum("mij,mjk,mkl->mil", P, H, P)
+    grad_mag = np.linalg.norm(grad, axis=1)
+    if v is None:
+        P = np.identity(grad.shape[0])-np.einsum("ij,ik->ijk", grad, grad)
+        matrix = 1/grad_mag * np.einsum("mij,mjk,mkl->mil", P, H, P)
         return np.linalg.eigvals(matrix).real
 
     else:
-        curvature=np.einsum("ij, ijk, ik->i", v, H, v)/(np.einsum("ij,ij->i", v,v)*grad_mag)
-        return curvature[:,np.newaxis]
+        curvature = np.einsum("ij, ijk, ik->i", v, H, v) / \
+            (np.einsum("ij,ij->i", v, v)*grad_mag)
+        return curvature[:, np.newaxis]
 
-def find_perpendicular_vector(directional_derivative, A, direction, logger=None):
-    
-    tangent=np.hstack([directional_derivative[None, :,1],-directional_derivative[None,:,0]])*direction
-    
-    tangent_d=np.einsum("ij,kj->ik", tangent, A)
 
-    tangent_d/=np.linalg.norm(tangent_d, axis=1,keepdims=True)
-    # if logger is not None:
-    #     logger.info(f"prev tangent and tangent angle {np.degrees(angle(prev_tangent, tangent_d))}")
-        
-    # if np.abs(angle(prev, direction)-np.pi)<0.5:
-    #     tangent_d*=-1
+def find_perpendicular_vector(directional_derivative, A, direction):
+    tangent = np.hstack([directional_derivative[None, :, 1], -
+                        directional_derivative[None, :, 0]])*direction
+    tangent_d = np.einsum("ij,kj->ik", tangent, A)
+    tangent_d /= np.linalg.norm(tangent_d, axis=1, keepdims=True)
+
     return tangent_d
 
-def boundary_traversal(baseline_nids, start_position, output_boundary_path,
-                       batch_size=8, tangent_guide=None, dr_model=None,
-                       sampling_method=None, end_position=None, anchor=None, run_name="", init_search="binary", max_iter=500,
-                       bidirectional=True, grad_est="fd", logger_level=None, eps=1e-3, step_size=1e-2, early_stopping=False,
-                       draw_plots=True, adv_idx=None):
+def minor(m,i,j):
+    return np.delete(np.delete(m, i, 0),j,1)
+
+def circle_radius(x_val,y_val):
+    col1=x_val**2+y_val**2
+    A=np.vstack([col1,x_val,y_val,np.ones(3)]).T
+
+    M11=np.linalg.det(np.delete(A, 0,1))
+    if M11==0:
+        return 0.1
+    M12=np.linalg.det(np.delete(A, 1,1))
+    M13=np.linalg.det(np.delete(A, 2,1))
+    M14=np.linalg.det(np.delete(A, 3,1))
+    x0=0.5*M12/M11
+    y0=-0.5*M13/M11 
+    
+    r=x0**2+y0**2+M14/M11 
+    return np.sqrt(r)
+
+def boundary_traversal(baseline_nids, start_position, plane, output_boundary_path,
+                       dr_model=None, run_name="", max_iter=500, max_step=1,
+                       logger_level=None, eps=1e-3, draw_plots=False, idx=None, write=True):
 
     # set up logger
     threshold = baseline_nids.threshold
-    nids_name = baseline_nids.name
 
     if logger_level is None:
-        logger=logging.getLogger('dummy') 
+        logger = logging.getLogger('dummy')
     else:
-        logger = setup_logger(f'{nids_name}_{run_name}_{threshold:.3f}',
-                            f'boundary_logs/{nids_name}_{run_name}_{threshold:.3f}.log', logger_level)
+        logger = setup_logger(run_name,
+                              f'boundary_logs/{run_name}/{idx}.log', logger_level)
 
     feature_range = (scaler.data_max_ - scaler.data_min_)
-    
-    # if start_position can either be a filename of data or a single data point
-    if isinstance(start_position, str):
-        dataset = get_dataset(start_position, batch_size, frac=1, shuffle=False,
-                              read_with="pd", seed=42, dtype="float32", skip_header=False)
+
+    traced_boundary=[]
+
+    if not isinstance(start_position, np.ndarray):
+        start_position = start_position.numpy()
+    if start_position.ndim == 1:
+        start_position = np.expand_dims(start_position, axis=0)
+
+    start_label, start_score = baseline_nids.decision(start_position, True)
+
+    traced_boundary.append(start_position)
+
+    x_n_score = start_score
+    x_n = np.copy(start_position)
+    statistics = {"score": start_score[0],
+                    "drawn":draw_plots,
+                    "init": True,
+                    "init_dist":0,
+                    "irregular": 0, "jagged": 0, "failed": 0, "discontinuous": 0, "distance": 0, "complete": 0, "enclosed": False}
+
+    # find the search direction
+    if isinstance(plane, np.ndarray):
+        v = start_position-plane
+        
+    elif plane == "random":
+        v = rng.uniform(scaler.data_min_,
+                            scaler.data_max_, (2,start_position.shape[1]))
+        
+    elif plane == "grad_attrib":
+        median_baseline = np.array([[1.77647977e+01,  7.91110919e+02,  2.69185140e+02,  2.89514298e+01,
+                                    8.08515834e+02,  1.25510713e+03,  8.41333078e+01,  8.28662326e+02,
+                                    9.97855458e+03,  8.11220971e+02,  8.43755024e+02,  2.37963303e+05,
+                                    5.23390208e+03,  8.58700374e+02,  2.72830619e+05,  1.77647977e+01,
+                                    7.91110919e+02,  2.69185140e+02,  8.93315557e+02,  2.66163433e+05,
+                                    6.72632935e-04,  5.35686830e-04,  2.89514298e+01,  8.08515834e+02,
+                                    1.25510713e+03,  8.93028176e+02,  2.70974586e+05,  2.88202631e-02,
+                                    2.24825751e-03,  8.41333078e+01,  8.28662326e+02,  9.97855458e+03,
+                                    8.93862228e+02,  2.77694343e+05,  0.00000000e+00,  0.00000000e+00,
+                                    8.11220971e+02,  8.43755024e+02,  2.37963303e+05,  8.96559861e+02,
+                                    2.85847708e+05, -9.54228266e+00, -2.98488341e-03,  5.23390208e+03,
+                                    8.58700374e+02,  2.72830619e+05,  9.08172132e+02,  2.92552247e+05,
+                                    -4.68353220e+01, -8.55576133e-03,  1.76916091e+01,  1.69885399e-02,
+                                    1.29984952e-04,  2.88510972e+01,  1.70497534e-02,  1.32537505e-04,
+                                    8.38732978e+01,  1.72235522e-02,  1.36116072e-04,  8.06415332e+02,
+                                    1.76861989e-02,  1.93991241e-04,  4.80839061e+03,  2.16405462e-02,
+                                    1.81350137e-02,  1.75268811e+01,  7.75385079e+02,  1.92532352e+00,
+                                    8.98608245e+02,  2.59262226e+05,  2.85351986e-04,  3.90553909e-04,
+                                    2.85986391e+01,  7.73559937e+02,  3.41993084e+00,  8.98503484e+02,
+                                    2.64061834e+05,  1.18725609e-02,  1.67338817e-03,  8.31752317e+01,
+                                    7.64892930e+02,  3.47107472e+01,  9.00049801e+02,  2.69967382e+05,
+                                    0.00000000e+00,  0.00000000e+00,  7.99036398e+02,  7.59354482e+02,
+                                    3.13542706e+02,  9.01881353e+02,  2.71620228e+05,  0.00000000e+00,
+                                    0.00000000e+00,  4.62262446e+03,  7.56464738e+02,  6.15421856e+02,
+                                    8.96685506e+02,  2.68274320e+05,  0.00000000e+00,  0.00000000e+00]])
+        # median_baseline=np.array([nids_model.min_feature["Cam_1"]])
+        # find feature attributions of start to x_n
+        v, _ = integrated_gradients(
+            dr_model.transform, median_baseline, start_position, m_steps=128, recon=True)
+        v=np.squeeze(v)
+        
     else:
-        dataset=start_position
-        if dataset.ndim==1:
-            dataset = start_position[np.newaxis,:]
+        raise ValueError(
+            "plane must be two vectors, random or grad-attrib")
+
+    
+    v/=feature_range
+    
+    cosine = angle(v[None, 0], v[None, 1])
+    statistics["v1v2angle"] = cosine
+    
+    A, _ = np.linalg.qr(v.T)
+    
+    #ensure the first vector have the same sign
+    if np.sign(A[0,0])!=np.sign(v[0,0]):
+        A*=-1
+    
+    plot_range=None
+
+    init_step = 0.05
+    
+    x_init, x_init_score, init_dist_to_db = linear_search(A[None, :, 0], x_n, np.full(
+        start_score.shape, init_step), threshold,
+        baseline_nids.decision, diff_threshold=eps, logger=logger, 
+        feature_range=feature_range, max_iter=400, 
+        )
+    start_coord=np.array([[1,0]])
+    if np.abs(x_init_score-threshold)>eps:
+        x_init, x_init_score, init_dist_to_db = linear_search(-A[None, :, 0], x_n, np.full(
+        start_score.shape, init_step), threshold,
+        baseline_nids.decision, diff_threshold=eps, logger=logger, 
+        feature_range=feature_range, max_iter=400, 
+       )
+        start_coord=np.array([[-1,0]])
+    
+    if np.abs(x_init_score-threshold)>eps:
+        x_init, x_init_score, init_dist_to_db = linear_search(A[None, :, 1], x_n, np.full(
+        start_score.shape, init_step), threshold,
+        baseline_nids.decision, diff_threshold=eps, logger=logger, 
+        feature_range=feature_range, max_iter=400, 
+       )
+        start_coord=np.array([[0,1]])
+        
+    
+    if np.abs(x_init_score-threshold)>eps:
+        x_init, x_init_score, init_dist_to_db = linear_search(-A[None, :, 1], x_n, np.full(
+        start_score.shape, init_step), threshold,
+        baseline_nids.decision, diff_threshold=eps, logger=logger, 
+        feature_range=feature_range, max_iter=400, 
+       )
+        start_coord=np.array([[0,-1]])
+
+
+    if np.abs(x_init_score-threshold) > eps:
+        statistics["init"] = False
+        plot_range=[[-5,5,200]]
+        statistics["drawn"]=True
+    else:
+        statistics["init_dist"]=init_dist_to_db[0]
+    
+    traced_boundary.append(x_init)
+
+    direction = 1
+    symbols = ["diamond", "diamond"]
+
+    prev_angle = 0
+    early_stop_flag = False
+    fail_counter = 0
+    half_way = None
+    end_coord=None
+    half1=False 
+    half2=False
+
+    x_n = np.copy(x_init)
+    x_n_score = np.copy(x_init_score)
         
 
-    if grad_est == "mc":
-        def grad_func(f, x, delta_t=1e-5):
-            return monte_carlo_estimate(
-                f, x, 4096, delta_t, logger=logger)
-    elif grad_est == "fd":
-        def grad_func(f, x, delta_t=1e-5, direction=None, feature_range=None):
-           
-            return gradient_estimate(f, x, delta_t, direction, feature_range)
-           
-    else:
-        raise Exception("invalid gradient estimate")
-
-   
-    if end_position is None:
-        if init_search != "linear":
-            raise ValueError(
-                "if end position is not provided then init_search must be linear")
-    elif end_position.ndim==1 or end_position.shape[0]==1:
-        end_position = np.tile(end_position, [dataset.shape[0], 1])
-    elif end_position.shape[0]!=dataset.shape[0]:
-        raise ValueError("end position shape must match start position")
-    
-    
-    count = 0
-
-    for x_start, x_end in tqdm(zip(dataset,end_position)):
-        if adv_idx is not None:
-            count=adv_idx
-        
-        output_bd=f"{output_boundary_path}{count}.csv"
-            
-        logger.info(f"traversing {count}")
+    if logger_level:
+        logger.info(f"traversing {idx}")
         logger.info("="*50)
-        
-        if draw_plots:
-            # plots and data for statistics
-            fig, axs = plt.subplots(2, 2, figsize=(12, 6))
-            dist_ben = []
-            dist_prev = []
-            boundary_gradient_angles = []
-            relationship = []
-            profiles = []
-            ord = 2
-        with open(output_bd, "w") as adv_f:
-            if not isinstance(x_start, np.ndarray):
-                x_start = x_start.numpy()
-            if x_start.ndim == 1:
-                x_start = np.expand_dims(x_start, axis=0)
-            if x_end.ndim == 1:
-                x_end = np.expand_dims(x_end, axis=0)
+        logger.info(f"x start score: {start_score}, label: {start_label}")
+        logger.info(f"initial boundary score: {x_n_score}")
+        logger.info("*"*50)
+    if statistics["init"]:
+        for t in tqdm(range(max_iter)):
+            symbol = "circle"
+            if early_stop_flag:
+                if direction == -1:
+                    break
+                half_way = t+1
+                direction = -1
+                x_n = x_init
+                x_n_score = x_init_score
+                early_stop_flag = False
+                prev_angle = 0
 
-            start_label, start_score = baseline_nids.decision(x_start, True)
-            logger.info(f"x start score: {start_score}, label: {start_label}")
+            grad_f = gradient_estimate(baseline_nids.predict,
+                                        x_n, delta_t=1e-5, direction=A.T, feature_range=feature_range)
+            tangent_d = find_perpendicular_vector(grad_f, A, direction)
 
-            np.savetxt(adv_f, x_start, delimiter=',')
+            # curvature calculation
+            step_size = step_size_estimate(baseline_nids.predict, x_n, np.array(
+                [1e-2]), tangent_d, feature_range, np.array([1e-4]), logger=logger)
+            step_size = np.clip(step_size, 0.01, max_step)
 
-            # find initial bondary sample
-            
-            end_label, end_score = baseline_nids.decision(x_end, True)
-            logger.info(f"x end score: {end_score}, label: {end_label}")
+            # take a step and get score
+            x_np1 = take_step(x_n, step_size, tangent_d, feature_range)
+            x_np1_score = baseline_nids.predict(x_np1)
 
-            if init_search == "binary":
-                if start_label == end_label:
-                    raise ValueError(
-                        "start and end have same label which does not work with binary search")
+            if logger_level:
+                logger.info(f"step size est {step_size}")
+                logger.info(f"after step {t+2} score {x_np1_score}")
 
-                x_n, x_n_score = binary_search(
-                    x_end, x_start, eps, baseline_nids.decision, logger=logger)
-
-            elif init_search == "linear":
-                x_n_score=start_score
-                x_n=np.copy(x_start)
-                while np.abs(x_n_score-threshold)>eps:
-                    # find the search direction
-                    if end_position is None: 
-                        logger.info("search for boundary point with gradient")
-                        init_search_direction=grad_func(baseline_nids.predict,
-                                    x_n, delta_t=1e-5) * np.sign(threshold-start_score)
-                    else:
-                        logger.info("search for boundary point with end sample")
-                        if feature_range is None:
-                            init_search_direction = (x_end-x_start)
-                        else:
-                            init_search_direction = (x_end-x_start)/feature_range
-
-                    x_n, x_n_score = linear_search(
-                        init_search_direction, x_n, np.full(
-                            start_score.shape, 0.1), threshold, 
-                        baseline_nids.decision, diff_threshold=eps, logger=logger, feature_range=feature_range, max_iter=20)
-                
-                if end_position is None:
-                    x_end=x_n
-                
-                if np.any(np.abs(threshold - x_n_score) > eps):
-                    logger.warning(
-                        f"initial linear search did not find boundary score, final score is {x_n_score}")
-            else:
-                raise Exception("unknown init_search")
-
-            logger.info(f"initial boundary score: {x_n_score}")
-            x_init=np.copy(x_n)
-            np.savetxt(adv_f, x_n, delimiter=',')
-
-            # find guiding direction for tangent
-            if tangent_guide == "anchor":
-                if anchor is None:
-                    guiding_dir = rng.uniform(scaler.data_min_, scaler.data_max_, x_start.shape)
-                else:
-                    guiding_dir = (anchor-x_start)
-
-            elif tangent_guide.endswith("grad_attrib"):
-                # find feature attributions of start to x_n
-
-                attributions, _ = integrated_gradients(
-                    dr_model.transform, x_start, x_n, m_steps=128, recon=True)
-
-                if tangent_guide.startswith("perp"):
-                    # find feature attributions of start to x_n that is perpendicular to x_n-x_start
-                    x_n_lat = dr_model.transform(x_n)
-                    x_start_lat = dr_model.transform(x_start)
-
-                    lat_dir = x_n_lat - x_start_lat
-
-                    perp_dir = [lat_dir[0, 1], -lat_dir[0, 0]]
-
-                    guiding_dir = perp_dir[0] * attributions[0, 0, :] + \
-                        perp_dir[1] * attributions[0, 1, :]
-                else:
-                    guiding_dir = np.sum(attributions, axis=1)
-            else:
-                raise Exception("No tangent guide type found")
-
-            
-            boundary_direction = (x_n-x_start)
-
-            if feature_range is not None:
-                guiding_dir/=feature_range
-                boundary_direction/=feature_range
-                
-            
-                
-            tangent_d = guiding_dir
-            direction = 1
-            step_size = np.full(start_score.shape, step_size)
-            corrected_count = [0, 0]
-            corrected_distance=0
-            symbols = ["star", "triangle-up"]
-            
-            
-            A = np.hstack([guiding_dir.T, boundary_direction.T])
-            A, _ = np.linalg.qr(A)
-            
-            early_stop_flag=False
-            logger.info("*"*50)
-            for t in tqdm(range(max_iter)):
-                if bidirectional and (t == max_iter//2 or early_stop_flag):
-                    if direction==-1:
-                        break
-                    direction = -1
-                    x_n = x_init
-                    tangent_d=-guiding_dir
-                    early_stop_flag=False
-                    
-
-                # grad_f = grad_func(baseline_nids.predict, x_n, delta_t=1e-4)
-                
-                # if feature_range is not None:
-                #     grad_f*=feature_range
-
-                # tangent_d = intersection_vector(
-                #     A, grad_f, tangent_d, logger=logger)
-                
-                grad_f = grad_func(baseline_nids.predict,
-                                       x_n, delta_t=1e-5, direction=A.T, feature_range=feature_range)
-                logger.info(f"gradient at x_n {grad_f/np.linalg.norm(grad_f,axis=1,keepdims=True)}")
-                
-                tangent_d=find_perpendicular_vector(grad_f, A, direction, logger=logger)
-                                
-                # find tangent direction in boundary plane
-                res, residual, _, _ = np.linalg.lstsq(A, tangent_d.T, rcond=None)
-                res /= np.linalg.norm(res, axis=0)
-                
-                logger.info(f"tangent direction: {res.T}, residual: {residual}")
-                
-                grad_f=np.einsum("ij,kj->ik", grad_f, A)/feature_range
-                
-                # curvature calculation
-                step_size=step_size_estimate(baseline_nids.predict, x_n, np.array([1e-3]), tangent_d, feature_range, logger=logger)
-                step_size=np.minimum(step_size, 0.2)
-                
-                # logger.info(f"step size est {step_size}")
-                # curvature_profile = curvature(
-                #     baseline_nids.predict, x_n, grad_f)
-                # profiles.append(curvature_profile)
-                # logger.info(f"maximum curvature {np.max(curvature_profile)}, minimum curvature {np.min(curvature_profile)}")
-                # step_size=0.173/np.abs(curvature)
-                # step_size=np.array([1e-1])
-                # step_size=np.clip(step_size, 0.001, 0.1)
-                
-                # take a step and get score
-                x_np1 = take_step(x_n, step_size, tangent_d, feature_range)
-                x_np1_score = baseline_nids.predict(x_np1)
-                
-                logger.info(f"after step {t} score {x_np1_score}")
-                
                 # find coordinate in boundary plane
-                if feature_range is not None:
-                    coord=(x_np1-x_start)/feature_range
-                else:
-                    coord=(x_np1-x_start)
-                x_np1_coord, coord_residual, _, _ = np.linalg.lstsq(A, coord.T, rcond=None)
-                logger.info(f"x_np1 coord {x_np1_coord.T} residual {coord_residual}")
-
-                # find change along gradient
-                gradient_score = baseline_nids.predict(take_step(x_n, step_size, grad_f/np.linalg.norm(grad_f, axis=1), feature_range))
-                
-                # original score
-                x_n_score = baseline_nids.predict(x_n)
-
-                # save uncorrected
-                # np.savetxt(adv_f, x_np1, delimiter=',')
-                # symbols.append("diamond")
-
-                # find angle between boundary and gradient
-                if draw_plots:
-                    bg = angle(grad_f, A.T)
-                    boundary_gradient_angles.append(bg)
-                
-                
-                
+                coord = (x_np1-start_position)/feature_range
+                coords, res, _, _ = np.linalg.lstsq(
+                    A, np.hstack([coord.T, tangent_d.T]), rcond=None)
                 logger.info(
-                    f"gradient_score diff {gradient_score-x_n_score} tangent_score diff {x_np1_score-x_n_score}")
-                if np.abs(gradient_score-x_n_score)<np.abs(x_np1_score-x_n_score):
-                    logger.info("tangent > gradient")
+                    f"tangent direction: {coords[:,1]}, coordinate after step: {coords[:,0]}, res {res}")
 
-                # correction step
-                correction_count = 0
-                # correction_step = np.clip((threshold - end_score) * 10,
-                #                           -0.02, 0.02)
-                correction_step = np.full(
-                    (x_np1_score.shape[0],), np.sign(threshold-x_np1_score)* step_size/20.)
+            # correction step
+            if np.any(np.abs(threshold - x_np1_score) > eps):
+                logger.info("correct along gradient")
+                # save uncorrected
+                # traced_boundary.append(x_np1)
+                # symbols.append("square-open")
 
-                while np.any(np.abs(threshold - x_np1_score) > eps):
-                    update_idx = np.abs(threshold - x_np1_score) > eps
+                update_idx = np.abs(threshold - x_np1_score) > eps
 
-                    grad_f = grad_func(baseline_nids.predict,
-                                       x_np1[update_idx], delta_t=1e-5, direction=A.T, feature_range=feature_range)
-                    
-                    plane_grad=np.einsum("ij,kj->ik", grad_f, A)
-                    
-                    res, residual, _, _ = np.linalg.lstsq(A, plane_grad.T, rcond=None)
-                    res /= np.linalg.norm(res, axis=0)
-                    
-                    logger.info(f"correction direction {grad_f/np.linalg.norm(grad_f, axis=1,keepdims=True)}, res {res.T}, residual {residual}")
+                correction_dir = np.sign(
+                    threshold-x_np1_score)*np.einsum("ij,kj->ik", grad_f, A)
 
-                    points, scores, corrected_distance = linear_search(
-                        plane_grad, x_np1[update_idx], correction_step[update_idx], threshold,
-                        baseline_nids.decision, diff_threshold=eps, step_count=correction_count, 
-                        logger=logger, feature_range=feature_range, max_iter=20, check_both_dir=False, return_step=True)
-                    
-                    
+                points, scores,_ = linear_search(
+                    correction_dir, np.copy(
+                        x_np1[update_idx]), step_size/20., threshold,
+                    baseline_nids.decision, diff_threshold=eps,
+                    logger=logger, feature_range=feature_range, max_iter=20,
+                                        )
 
-                    x_np1[update_idx] = points
-                    x_np1_score[update_idx] = scores
-                    correction_count += 1
+                # correct along -tangent
+                if np.any(np.abs(threshold - scores) > eps):
+                    # save uncorrected
+                    # traced_boundary.append(points)
+                    # symbols.append("square-open")
 
-                    logger.info(
-                        f"correction step {correction_count}, end_score {x_np1_score}, corrected_step {corrected_distance}")
+                    if logger_level:
+                        logger.info(
+                            "initial correction failed, search along -tangent")
 
-                    if correction_count == 10:
+                    points, scores,_ = linear_search(
+                        -tangent_d, np.copy(points[update_idx]), step_size/20., threshold,
+                        baseline_nids.decision, diff_threshold=eps,
+                        logger=logger, feature_range=feature_range, max_iter=40,
+                        )
+                    symbol = "square"
+
+                # correct along x_n
+                if np.any(np.abs(threshold - scores) > eps):
+                    if logger_level:
+                        logger.info("correct along -gradient")
+                    # save uncorrected
+                    # traced_boundary.append(points)
+                    # symbols.append("square-open")
+
+                    points, scores,_ = linear_search(
+                        -correction_dir, np.copy(points[update_idx]), step_size/20., threshold,
+                        baseline_nids.decision, diff_threshold=eps,
+                        logger=logger, feature_range=feature_range,
+                        max_iter=20)
+                    symbol = "cross"
+
+                if np.any(np.abs(threshold - scores) > eps):
+                    symbol = "x"
+                    if logger_level:
                         logger.warning(
-                            f"correction failed at {t}, end_score {x_np1_score}, correction_step {correction_step}")
-                        break
-                    
-                if feature_range is not None:
-                    coord=(x_np1-x_start)/feature_range
-                else:
-                    coord=(x_np1-x_start)
-                x_np1_coord, coord_residual, _, _ = np.linalg.lstsq(A, coord.T, rcond=None)
-                logger.info(f"corrected coord {x_np1_coord.T} residual {coord_residual}")
+                            "cannot find boundary, incorrect gradient, revert back to x_n")
+                    points = x_n
+                    scores = x_n_score
+
+                x_np1[update_idx] = points
+                x_np1_score[update_idx] = scores
+
+                logger.info(f"end_score {x_np1_score}")
+
+            if symbol == "circle":
+                max_step = np.minimum(0.1, max_step*2)
+                if fail_counter > 0:
+                    statistics["discontinuous"] += 1
+                fail_counter = 0
+
+            else:
+                max_step = np.maximum(1e-3, max_step*0.5)
+                fail_counter += 1
+                if symbol == "x":
+                    statistics["failed"] += 1
+                    symbols[-1] = "x"
+                    continue
+                elif symbol == "square":
+                    statistics["irregular"] += 1
+                elif symbol == "cross":
+                    statistics["jagged"] += 1
+
+            x_np1_coord, _, _, _ = np.linalg.lstsq(
+                A, ((x_np1-start_position)/feature_range).T, rcond=None)
+
+            dist_from_prev = ln_distance(
+                x_np1/feature_range, x_n/feature_range, 2)[0, 0]
+            if logger_level:
+                logger.debug(f"symbol {symbol} counter {fail_counter}")
+                logger.info(f"distance {dist_from_prev}")
+                        
+            statistics["distance"] += dist_from_prev
+
+            symbols.append(symbol)
+
+            traced_boundary.append(x_np1)
+
+            x_n = np.copy(x_np1)
+            x_n_score = np.copy(x_np1_score)
+
+            if t == max_iter//2 and statistics["complete"] == 0:
+                early_stop_flag = True
+                if logger_level:
+                    logger.info("bidirectional early stopping at half way")
+
+            if logger_level:
                 
-                if correction_count == 0:
-                    symbols.append("circle")
-                elif correction_count > 1:
-                    symbols.append("cross")
-                    corrected_count[1] += 1
-                    logger.warning(f"correction count is over 2")
-                else:
-                    symbols.append("x")
-                    corrected_count[0] += 1
+                logger.debug(f"x_np1_coord {x_np1_coord.T}")
+            theta = angle_clockwise(start_coord, x_np1_coord.T)[0]
 
-                logger.info("*"*50)
-                np.savetxt(adv_f, x_np1, delimiter=',')
+            logger.info(
+                f"theta {np.degrees(theta)}, prev angle {np.degrees(prev_angle)}")
 
-                if sampling_method == "linear":
-                    # linearly sample
-                    lin_samples = linear_sample(x_start, x_np1_score, 10)
-                    np.savetxt(adv_f, lin_samples, delimiter=',')
-
-                if sampling_method == "neighbour":
-                    # neighbourhood sample
-                    attributions, _, _ = integrated_gradients(
-                        dr_model.transform, x_start, x_np1_score, m_steps=128, recon=False, reduce_points=True)
-                    attributions = attributions.numpy()
-
-                    neig_samples = sample_near_point(
-                        x_np1_score, attributions[np.newaxis, 0, 0,
-                                                  :], attributions[np.newaxis, 0, 1, :], feature_range,
-                        range=[0.3, 0.3], steps=[3, 3])
-                    np.savetxt(adv_f, neig_samples, delimiter=',')
-
-                x_n = np.copy(x_np1)
-                if draw_plots:
-                    distance = ln_distance(scaler.transform(
-                        x_start), scaler.transform(x_np1), ord)
-                    dist_ben.append(distance)
-                    distance2 = ln_distance(scaler.transform(
-                        x_n), scaler.transform(x_np1), ord)
-                    dist_prev.append(distance2)
-                
-                
-                if early_stopping:
-                    if early_stopping=="start":
-                        check_point=x_start
-                    else:
-                        check_point=x_end
-                    theta=angle((x_init-check_point)/feature_range, (x_n-check_point)/feature_range)
-                    
-                    logger.info(f"theta {np.degrees(theta)}")
-                    #check if angle is close to pi
-                    if bidirectional:
-                        if np.abs(theta-np.pi)<1e-1:
-                            early_stop_flag=True 
-                            logger.info("bidirectional early stopping")
-                    else:
-                        # check if it passes half way
-                        if np.abs(theta-np.pi)<1e-1:
-                            early_stop_flag=True
-                            
-                            logger.info("unidirectional half way")
-                        # if it passes and returns back to 0 we stop
-                        if early_stop_flag and np.abs(theta)<1e-1:
-                            
-                            logger.info("unidirectional early stopping")
-                            break 
-
-            print(f"number of corrected points: {corrected_count[0]}")
-            print(f"number of disjoint points {corrected_count[1]}")
-            
-            #save anchor and end points 
-            if anchor is not None:
-                np.savetxt(adv_f, anchor, delimiter=',')
-                adv_f.flush()
-            
-            np.savetxt(adv_f, x_end, delimiter=',')
-            adv_f.flush()
-            
-            if draw_plots:
-                dist_ben = np.squeeze(dist_ben)
-                dist_prev = np.squeeze(dist_prev)
-                # if bidirectional:
-                #     mid=max_iter//2
-                # else:
-                #     mid=max_iter
-                # if dist_ben.ndim == 1:
-                #     axs[0].plot(np.hstack((dist_ben[mid:][::-1], dist_ben[:mid])))
-                # else:
-                #     axs[0].plot(
-                #         np.vstack((dist_ben[mid:][::-1, :], dist_ben[:mid])))
-                axs[0][0].plot(dist_ben)
-                axs[0][0].set_title(
-                    f"distance from benign sample in l{ord:.2f} norm", wrap=True)
-
-                axs[0][1].plot(dist_prev)
-                axs[0][1].set_title(
-                    f"distance from previous point in l{ord:.2f} norm", wrap=True)
-
-                axs[1][0].plot(np.degrees(boundary_gradient_angles))
-                axs[1][0].set_title(f"angle between boundary and gradient", wrap=True)
-
-                relationship=np.array(relationship)
-                axs[1][1].plot(relationship)
-                axs[1][1].set_title(
-                    f"angle between guiding dir and gradient", wrap=True)
-
-                # transform profiles into acceptable format by joypy
-                # profiles = np.vstack(profiles)
-                # # group n rows
-                # n = 10
-                # profiles = profiles.reshape(-1, n, profiles.shape[1])
-
-                # ridgeline = go.Figure()
-                # for data_line in profiles:
-                #     ridgeline.add_trace(go.Violin(x=data_line.flatten()))
-
-                # ridgeline.update_traces(orientation='h', side='positive', width=5, points=False)
-                # ridgeline.update_layout(xaxis_showgrid=False, xaxis_zeroline=False)
-
-                # ridgeline.write_html(f"exp_figs/meta_plots/{nids_name}_{run_name}_ridge.html")
-
-                fig.tight_layout()
-                fig.savefig(f"exp_figs/meta_plots/{nids_name}_{run_name}_{count}.png")
-                
-                if anchor is not None:
-                    symbols.append("triangle-up")
-                symbols.append("star")
                 
             
+            if end_coord is None:
+                # check if point passes pi or 0
+                cond=prev_angle != 0 and np.sign(prev_angle) != np.sign(theta)
+                # if passing pi, we are half way
+                if np.abs(theta)> np.pi/2:
+                    half1=True
+            else:
+                # check if we have reached halfway point and we have moved sufficiently far away
+                cond=t-half_way>10 and ln_distance(end_coord, x_n/feature_range, 2)<0.1 
+                
+            if cond:
+                early_stop_flag = True
+                logger.info("bidirectional early stopping")
+                statistics["complete"] += 1
+                # if stopping at pi
+                
+                end_coord=np.copy(x_n)/feature_range
+            
+            prev_angle = theta
 
-                plot_decision_boundary_3p(baseline_nids.predict, A, plot_range=None, boundary_file=output_bd,
-                                    symbols=symbols, threshold=threshold, feature_range=feature_range,
-                                    file_name=f"{nids_name}_{threshold:.3f}_{init_search}_{tangent_guide}_{run_name}_{count}")
+            logger.info("*"*50)
         
-            count += 1
+        statistics["total"] = t
+        
+        if t==1999:
+            statistics["drawn"]=True
+        
+    # save anchor and end points
+    if isinstance(plane, np.ndarray):
+        traced_boundary.append(plane)
+        symbols.append("circle-open")
+        symbols.append("circle-open")
+        
+    traced_boundary.append(A.T)
+    
+    traced_boundary=np.vstack(traced_boundary)
+    # [[1.75,1.85,100],[0.45,0.55,100]]
+    f_val, area = plot_decision_boundary_3p(baseline_nids.predict, traced_boundary,plot_range=plot_range, 
+                                            symbols=symbols, threshold=threshold, feature_range=feature_range, half_way=half_way,
+                                            file_name=f"{run_name}/{idx}", plot_contour=statistics["drawn"])
+    statistics["plane_std"] = np.std(f_val)
+    statistics["plane_pos"] = np.mean(f_val > threshold)
+    statistics["area"] = area
+    statistics["enclosed"] = half1 and (statistics["complete"]==2)
+
+    if write:
+        with open(f"{output_boundary_path}{idx}.csv", "w") as adv_f:
+            np.savetxt(adv_f, traced_boundary,delimiter=',')
+    
+    if fail_counter >= 1:
+        statistics["discontinuous"] += 1
+    
+    
+    return statistics
 
 
 def ln_distance(x1, x2, ord):
     return np.sum(np.abs(x1-x2)**ord, axis=1, keepdims=True)**(1./ord)
 
 
-def angle(v1, v2):
+def angle(v1, v2, pairwise=True):
     v1 /= np.linalg.norm(v1, axis=1, keepdims=True)
     v2 /= np.linalg.norm(v2, axis=1, keepdims=True)
-    return np.squeeze(np.arccos(np.clip(np.einsum('ij,kj->ik', v1, v2), -1.0, 1.0)))
+    if pairwise:
+        einsum_str = 'ij,kj->ik'
+    else:
+        einsum_str = 'ij,ij->i'
+    return np.squeeze(np.arccos(np.clip(np.einsum(einsum_str, v1, v2), -1.0, 1.0)))
+
+
+def angle_clockwise(v2, v1):
+    dot = v1[:, 0]*v2[:, 0] + v1[:, 1]*v2[:, 1]
+    det = v1[:, 0]*v2[:, 1] - v1[:, 1]*v2[:, 0]
+    angle = np.arctan2(det, dot)
+    return angle
 
 
 def sample_near_point(points, gradx, grady, feature_range, range=[0.5, 0.5], steps=[5, 5]):
@@ -1233,63 +1202,81 @@ def gini_index(x):
     return p_pos
 
 
-def read_adversarial_file(log_file, adv_csv, adv_ori_csv, idx_offset, target_adv_idx, out_path=None):
 
+def read_adversarial_file(dataset, network_atk, adv_atk, idx_offset, target_adv_idx=None, out_path=None):
+    log_file = f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/{network_atk}/{adv_atk}/logs/Cam_1_{network_atk}_iter_0.txt"
+    adv_csv = f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/{network_atk}/{adv_atk}/csv/Cam_1_{network_atk}_iter_0.csv"
+    adv_ori_csv = f"../../mtd_defence/datasets/{dataset}/malicious/Cam_1/Cam_1_{network_atk}.csv"
     count = 0
+    adv_idx = []
+    mal_idx = []
     with open(log_file, "r") as f:
         record = False
-        c = 0
         for line in f.readlines():
-            
             if line.startswith("original"):
                 record = True
                 continue
             if line.startswith("mutation"):
                 record = False
-
             if record:
-
-                if count == target_adv_idx:
+                if target_adv_idx is None or count in target_adv_idx:
                     line = line.rstrip().split(",")
-                    num_craft_pkt = int(float(line[6].split(" ")[1]))
-                    adv_start_idx = int(line[3]) - \
+                    num_craft_pkt = int(float(line[6].split(" ")[1]))+1
+                    start_idx = int(line[3]) - \
                         idx_offset - num_craft_pkt + 1
-                    mal_idx = int(line[2])
-                    break
-
+                    adv_idx.append(start_idx+num_craft_pkt)
+                    mal_idx.append(int(line[2])+1)
                 count += 1
             else:
                 continue
-    adv_features = pd.read_csv(
-        adv_csv, skiprows=adv_start_idx, nrows=num_craft_pkt + 1, header=None)
-    ori_adv_features = pd.read_csv(
-        adv_ori_csv, skiprows=mal_idx + 1, nrows=1, header=None, usecols=list(range(100)))
 
-    result = pd.concat([ori_adv_features, adv_features])
+    adv_features = pd.read_csv(
+        adv_csv, skiprows=lambda x: x not in adv_idx, header=None).to_numpy()
+    ori_adv_features = pd.read_csv(
+        adv_ori_csv, skiprows=lambda x: x not in mal_idx, header=None, usecols=list(range(100))).to_numpy()
+
     if out_path is not None:
         with open(out_path, "w") as adv_f:
-            np.savetxt(adv_f, result.to_numpy(), delimiter=',')
-    return result.to_numpy("float32")
+            np.savetxt(adv_f, np.hstack(
+                [adv_features, ori_adv_features]), delimiter=',')
+    return adv_idx, adv_features, ori_adv_features
 
 
 def get_benign_sample(benign_path, idx):
-    benign_sample = pd.read_csv(benign_path, usecols=list(range(100)),skiprows=idx, nrows=1, header=None)
+    benign_sample = pd.read_csv(benign_path, usecols=list(
+        range(100)), skiprows=idx, nrows=1, header=None)
     return benign_sample.to_numpy()
 
-def sample_n_from_csv(filename, n, total_rows=None,seed=42):
-    rng=np.random.default_rng(seed)
-    if total_rows is None:
-        with open(filename,"r") as fh:
-            total_rows = sum(1 for row in fh)
-    if(n>total_rows):
-        raise Exception("n cannot be larger than total rows") 
-    skip_rows = rng.choice(total_rows, total_rows-n-1, replace=False)
-    return pd.read_csv(filename, usecols=list(range(100)), skiprows=skip_rows, header=1).to_numpy()
-      
+
+def sample_n_from_csv(path, n=None, row_idx=None, ignore_rows=0, total_rows=None, seed=42, header=None,**kwargs):
+    if n is None and row_idx is None:
+        raise Exception("n and row idx cannot both be none")
+
+    if row_idx is None:
+        rng = np.random.default_rng(seed)
+        if total_rows is None:
+            with open(path, "r") as fh:
+                total_rows = sum(1 for row in fh)
+        if (n > total_rows):
+            raise Exception("n cannot be larger than total rows")
+
+        row_idx = rng.choice(total_rows-ignore_rows, n,
+                             replace=False)+ignore_rows
+    row_idx = np.sort(row_idx)
+    if path.endswith(".csv"):
+        df = pd.read_csv(path, usecols=list(range(100)),
+                        skiprows=lambda x: x not in row_idx, header=header)
+        return row_idx, df.to_numpy()
+    if path.endswith(".npy"):
+        data=np.load(path)
+        return row_idx, data[row_idx]
+        
+        
+   
 
 
-def get_closest_benign_sample(benign_path, adv_example, transform_func=None):
-    """finds the closest benign sample to malicious sample
+def get_closest_benign_sample(benign_path, example, transform_func=None, eps=1e-3):
+    """finds the closest benign sample to adv sample
 
     Args:
         benign_path (string): path to benign samples
@@ -1301,14 +1288,15 @@ def get_closest_benign_sample(benign_path, adv_example, transform_func=None):
         np.ndarray: the closest benign sample
     """
     traffic_ds = get_dataset(benign_path, 1024,
-                             scaler=None, frac=1, read_with="tf", dtype="float32",
-                             seed=42, skip_header=True, shuffle=True)
+                             scaler=None, frac=1, read_with="tf", dtype="float64",
+                             seed=0, skip_header=True, shuffle=False)
 
     if transform_func is not None:
-        adv_example = transform_func(adv_example)
+        example = transform_func(example)
 
     closest_dist = None
     nearest_sample = None
+    closest_file_idx = None
 
     total = 0
     for data in tqdm(traffic_ds):
@@ -1318,31 +1306,38 @@ def get_closest_benign_sample(benign_path, adv_example, transform_func=None):
         else:
             latent = data
 
-        total += data.shape[0]
+        idx = np.arange(total, total+data.shape[0])+1
+
         distance = np.linalg.norm(
-            latent[:,  None, :] - adv_example[None, :, :], axis=-1)
-        
-        closest_idx = np.argmin(distance, axis=0,keepdims=True)
-        
-        current_closest_dist = np.take_along_axis(distance, closest_idx, axis=0)
-        
-        current_nearest_sample = latent[closest_idx[0]]
-        
-        
-        
+            latent[:,  None, :] - example[None, :, :], axis=-1)
+
+        # ignore close distance
+        distance = np.where(distance < eps, np.inf, distance)
+
+        closest_idx = np.argmin(distance, axis=0, keepdims=True)
+
+        current_closest_dist = np.take_along_axis(
+            distance, closest_idx, axis=0)
+        current_nearest_sample = data[closest_idx[0]]
+        current_closest_file_idx = idx[closest_idx[0]]
+
         if closest_dist is None:
             closest_dist = current_closest_dist
             nearest_sample = current_nearest_sample
+            closest_file_idx = current_closest_file_idx
         else:
-            
-            update_idx = (current_closest_dist < closest_dist)
-            
-            closest_dist[update_idx] = current_closest_dist[update_idx]
-            
-            nearest_sample[update_idx[0]] = current_nearest_sample[update_idx[0]]
 
+            update_idx = (current_closest_dist < closest_dist)
+
+            closest_dist[update_idx] = current_closest_dist[update_idx]
+            closest_file_idx[update_idx[0]
+                             ] = current_closest_file_idx[update_idx[0]]
+            nearest_sample[update_idx[0]
+                           ] = current_nearest_sample[update_idx[0]]
+
+        total += data.shape[0]
     print("processed", total)
-    return nearest_sample
+    return nearest_sample, closest_dist, closest_file_idx
 
 
 def test_nids(target_nids, scaler_path, file_path):
@@ -1371,146 +1366,193 @@ def test_nids(target_nids, scaler_path, file_path):
     plt.tight_layout()
     plt.savefig('exp_figs/benign_as.png')
 
+def reservoir_sample(files, file_db, nids, n=1000):
+    reservoir=[]
+    idx=[]
+    file_names=[]
+    counter=0
+    for file in files:
+        ds=get_dataset(file_db[file]["path"],1024,False,None,1,seed=42,drop_reminder=False)
+
+        counter2=0
+        for data in tqdm(ds):
+            data=data.numpy()
+            scores=nids.predict(data)
+            lower_idx=np.where((nids_model.threshold*0.9<scores) & (scores<nids_model.threshold*1.1))
+            lower_data=data[lower_idx]
+            
+            if lower_data.size==0:
+                counter+=data.shape[0]
+                counter2+=data.shape[0]
+                continue
+            
+            for i, sample in zip(lower_idx[0], lower_data): 
+                
+                if len(reservoir)<n:
+                    reservoir.append(sample)
+                    idx.append(counter2+i)
+                    file_names.append(file)
+                    
+                else:
+                    j = np.random.randint(0,counter+i)
+                    
+                    if j < n:
+                        reservoir[j] = sample
+                        idx[j]=counter2+i
+                        file_names[i]=file
+            counter+=data.shape[0]
+            counter2+=data.shape[0]
+    return np.array(idx), np.array(reservoir), file_names
 
 if __name__ == '__main__':
     dataset = "uq"
+    device = "Cam_1"
     mtd_model_path = f"../../mtd_defence/models/{dataset}/mtd/Cam_1/fm0_mm1_am20"
     scaler_type = "min_max"
     scaler_path = f"../../mtd_defence/models/uq/autoencoder/Cam_1_scaler.pkl"
     with open(scaler_path, "rb") as f:
         scaler = pickle.load(f)
-    target_nids = {
-        # "model3_SOM": {"path": f"{mtd_model_path}/model3.pkl", "thresholds": [2.4904096433417897]},
-        # "model2_OCSVM": {"path": f"{mtd_model_path}/model2.pkl", "threshold": 3.3806848104628235},
-        # "model15_SOM": {"path": f"{mtd_model_path}/model15.pkl", "thresholds": [2.841178429133494]},
-        # "model12_OCSVM": {"path": f"{mtd_model_path}/model12.pkl", "thresholds": [2.242774499012671]},
-        # "baseline_kitsune": {"path": f"../../mtd_defence/models/{dataset}/kitsune/Cam_1.pkl",
-        #                      "thresholds": np.linspace(0.1,0.28151878818499115, 10)},
-        "baseline_kitsune": {"thresholds": [0.28151878818499115], "params": {
-                             "path": f"../../mtd_defence/models/{dataset}/kitsune/Cam_1.pkl",
-                             "func_name": "process",
-                             "scale_output": 1,
-                             "save_type": "pkl"}}
-    }
 
-    batch_size = 10
     sampling_method = None
     distinguish_start_end = sampling_method == None
-    adv_atk = "autoencoder_0.1_10_3_False_pso0.5"
 
-    benign_path = "../../mtd_defence/datasets/uq/benign/Cam_1.csv"
-    ack_flooding_path="../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv"
     atk_type = "bt"
     # adv_path = f"../../mtd_defence/datasets/uq_network/adversarial/decision_boundary_adversarial/db_vis_0.01_20_3_False_pso0.5_None/csv/decision_boundary_adversarial_iter_0.csv"
     # ae_name = "min_max_mean_10.0_recon_loss_sw_loss_contractive_loss_adam_denoising_2d_0.001_double_recon"
 
-    dr_model_name = "pca"
     dr_models = {"pca": {"type": "hybrid", "name": "pca", "save_type": "pkl", "path": "../models/pca.pkl",
                          "func_name": "transform", "scaler": scaler, "threshold": 0.3},
                  "umap": {"type": "hybrid", "name": "umap", "save_type": "pkl", "path": "../models/umap.pkl",
                           "func_name": "transform", "scaler": scaler, "threshold": 0.3},
-                 "ae": {"type": "hybrid", "name": "ranking_loss_dist_loss", "save_type": "tf", "path": "../models/min_max_mean_10.0_ranking_loss_dist_loss_adam_denoising_2d_0.001",
+                 "ae": {"type": "hybrid", "name": "recon_loss_denoising", "save_type": "tf", "path": "../models/min_max_mean_10.0_recon_loss_adam_denoising_2d_0.001",
                         "func_name": "call", "dr_output_index": 0, "ad_output_index": 1, "dtype": "float32", "threshold": 0.3},
                  "lle": {"type": "dimensionality_reduction", "name": "lle", "save_type": "pkl", "path": "../models/lle.pkl",
                          "func_name": "transform", "scaler": scaler, },
                  }
 
-    # dr_name = ""
+    with open("configs/files.json","r") as f:
+        file_db=json.load(f)
 
-    if dr_models[dr_model_name]["type"] == "hybrid":
-        dr_model = HybridModel(**dr_models[dr_model_name])
-    elif dr_models[dr_model_name]["type"] == "dimensionality_reduction":
-        dr_model = GenericDRModel(**dr_models[dr_model_name])
-
-    seed=42
-    rng=np.random.default_rng(seed)
-    #randomly choose 1000 adversarial examples
-    # target_adv_idx = rng.choice(3000, 1000, replace=False)
-    target_adv_idx=[2036, 899]
     bidirectional = True
 
-    default_nids = GenericADModel("baseline_kitsune",  **{
-        "path": f"../../mtd_defence/models/{dataset}/kitsune/Cam_1.pkl",
-        "func_name": "process", "threshold": 0.28151878818499115,
-        "save_type": "pkl"})
+    # "ACK": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv", "color_scale": "Picnic", "frac": 0.03, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
+    # "SYN": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv", "color_scale": "Picnic", "frac": 0.05, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
+    # "UDP": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv", "color_scale": "Picnic", "frac": 0.02, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
+    # "ACK_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/ACK_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_ACK_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
+    # "SYN_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/SYN_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_SYN_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
+    # "UDP_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/UDP_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_UDP_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
+    # }
 
-    files = {
-        "benign": {"file_path": benign_path, "color_scale": "Picnic", "frac": 0.05, "batch_size": 1024,
-                   "plot_batch_size": 1, "draw_type": "background", "symbol": "circle", "shuffle": True,
-                   "opacity": 0.04, "skip_header": True,
-                   "nids_model": default_nids,
-                   },
-        # "ACK": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv", "color_scale": "Picnic", "frac": 0.03, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
-        # "SYN": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv", "color_scale": "Picnic", "frac": 0.05, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
-        # "UDP": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv", "color_scale": "Picnic", "frac": 0.02, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
-        # "ACK_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/ACK_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_ACK_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
-        # "SYN_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/SYN_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_SYN_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
-        # "UDP_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/UDP_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_UDP_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
-    }
-    # create_adversarial_examples(
-    #     baseline_kitsune, scaler_path, benign_path, adv_path, atk_type, threshold)
-    # random_sample(
-    #     baseline_kitsune, scaler_path, benign_path, adv_path, threshold)
-    # modified_hsj(
-    #     baseline_kitsune, scaler_path, benign_path, adv_path, threshold, search_only=False)
-    for i in target_adv_idx:
-        # adv_path = f"../adversarial_data/Cam_1_adv_{i}.csv"
-        # files[f"adv_{i}"] = {"file_path": adv_path, "color_scale": "Bluered", "frac": 1, "batch_size": 1, "shuffle": False,
-        #                      "plot_batch_size": 1, "skip_header": False, "draw_type": "adv_sample", "opacity": 1,
-        #                      "start_color": "red", "end_color": "goldenrod", "symbol": "star-triangle-up",
-        #                      "nids_model": default_nids}
+    n_samples = 1000
+    seed = 42
+    draw_prob=0.5
+    
+    
+    _, benign_samples = sample_n_from_csv(
+        **file_db["Cam_1"], n=n_samples*2, seed=seed+1)
+    
 
-        # adv_samples=mal_sample+craft_sample+adv_sample
-        adv_samples = read_adversarial_file(f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/ACK_Flooding/{adv_atk}/logs/Cam_1_ACK_Flooding_iter_0.txt",
-                                            f"../../mtd_defence/datasets/{dataset}/adversarial/Cam_1/ACK_Flooding/{adv_atk}/csv/Cam_1_ACK_Flooding_iter_0.csv",
-                                            f"../../mtd_defence/datasets/{dataset}/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
-                                            854685, i, out_path=None)
+
+    # explaining adversarial examples
+    rng = np.random.default_rng(seed)
+    
+    benign_tuple = ("Cam_1", np.hstack([benign_samples[:n_samples,np.newaxis,:], benign_samples[n_samples:,np.newaxis,:]]))
+    
+    starts = ["Cam_1","All"]
+    
+    planes=[benign_tuple]
+    
+ 
+    ae=["denoising_autoencoder_sigmoid_2_D","autoencoder_relu_2_D" ,"autoencoder_sigmoid_2_D",
+        "denoising_autoencoder_sigmoid_2_filtered_0.2","autoencoder_relu_2_filtered_0.2" ,"autoencoder_sigmoid_2_filtered_0.2",
+        "kitsune","autoencoder_relu_2" ,"autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2","autoencoder_sigmoid_25"]
+    epochs=["1","20","40","60","80","100"]
+    target_nidses =  [f"{a}_{e}" for a, e in itertools.product(ae, epochs)]
+
+
+    for start_name in starts:
+        if start_name=="All":
+            near_boundary=True
         
-        adversarial_sample = adv_samples[None, -1]
-
-        benign_sample = get_closest_benign_sample(
-            benign_path, adversarial_sample, scaler.transform)
-
-        # benign_sample=benign_sample[None,-1]
-
-        mal_sample = adv_samples[None, 0]
+        else:
+            near_boundary=False
+            target_idx, start_samples = sample_n_from_csv(
+            **file_db[start_name], n=n_samples, seed=seed)
+            file_names=[start_name for i in range(n_samples)]
+            
         
-        # benign_sample=sample_n_from_csv(benign_path, 1000, total_rows=854685, seed=seed)
-        # ack_flooding_sample=sample_n_from_csv(ack_flooding_path, 1000, total_rows=1288203, seed=seed)
-        
-        
-        # bt_config={"start":("adv", adversarial_sample),"end": ("mal", mal_sample), "anchor":("ben",benign_sample)}
-        bt_config={"start":("adv_ack",adversarial_sample), "end": ("ack", mal_sample), "anchor":("ben",benign_sample)}
-        
-        # benign_sample=get_benign_sample(benign_path, i*100+1000)
-
-
-        for nids_name, config in target_nids.items():
-
-            for t in config["thresholds"]:
-                # scale threshold
-                t *= config["params"]["scale_output"]
-                nids_model = GenericADModel(
-                    nids_name, threshold=t, **config["params"])
-
-                print(f"traversing boundary for {nids_name} at threshold {t}")
-                run_name=f"{seed}_{bt_config['start'][0]}_{bt_config['end'][0]}_{bt_config['anchor'][0]}"
-                boundary_path = f"../adversarial_data/Cam_1_{nids_name}_{atk_type}_{run_name}_{t:.3f}/"
-                if not os.path.exists(boundary_path):
-                    os.mkdir(boundary_path)
+        for nids_model in target_nidses:
+            nids_model = get_nids_model(nids_model, "opt_t") 
+            if near_boundary:
+                start_name="All"
+                target_idx, start_samples, file_names=reservoir_sample(["Cam_1","ACK","SYN","UDP","PS","SD"], file_db, nids_model, n_samples)
                 
-                files[f"{nids_name}_boundary_{i}_{t:.3f}"] = {"file_path": boundary_path, "color_scale": "balance", "shuffle": False,
-                                                              "frac": 1, "batch_size": 1, "plot_batch_size": bt_config["start"][1].shape[0],
-                                                              "skip_header": False, "draw_type": "boundary",
-                                                              "nids_model": nids_model,
-                                                              "opacity": 0.8, "start_color": "blue", "end_color": "red", "symbol": "star-dot"}
+            
+            draw=np.random.choice(a=[False, True], size=target_idx.shape, p=[draw_prob, 1-draw_prob])  
+            
+             
+            filename=f"exp_csv/db_characteristics/{nids_model.name}_{nids_model.threshold:.3f}_bt_results_{start_name}.csv"
+            file_exists = os.path.isfile(filename)
+            csv_file = open(filename, "w")
+            if not file_exists:
+                csv_file.write("run_name,file,idx,score,drawn,init,init_dist,irregular,jagged,failed,discontinuous,distance,complete,enclosed,v1v2angle,total,std,pos perc,area\n")
 
-                boundary_traversal(
-                    baseline_nids=nids_model, dr_model=dr_model,
-                    output_boundary_path=boundary_path, start_position=bt_config["start"][1], batch_size=1,
-                    tangent_guide="anchor", sampling_method=sampling_method, end_position=bt_config["end"][1], anchor=bt_config["anchor"][1], run_name=run_name,
-                    init_search="linear", max_iter=1000, bidirectional=bidirectional, grad_est="fd", logger_level=None,
-                    eps=1e-6*config["params"]["scale_output"], step_size=1e-2, early_stopping="start", draw_plots=False, adv_idx=i)
+            for plane in planes:                
+                dr_model=None
+                if isinstance(plane, tuple):
+                    plane_name, plane_dir = plane
+                elif plane.startswith("grad_attrib"):
+                    plane_name=plane
+                    plane_dir, dr_model_name = plane.split("-")
+                    if dr_models[dr_model_name]["type"] == "hybrid":
+                        dr_model = HybridModel(**dr_models[dr_model_name])
+                    elif dr_models[dr_model_name]["type"] == "dimensionality_reduction":
+                        dr_model = GenericDRModel(**dr_models[dr_model_name])
 
-    # draw_db(dr_model, files,
-    #         heat_map=-1, file_name=f"{dr_model.name}_{sampling_method}", bidirectional=bidirectional)
+                    plane_dir = [plane_dir for _ in range(n_samples)]
+                    
+                elif plane=="random":
+                    plane_name="random"
+                    plane_dir = ["random" for _ in range(n_samples)]
+                    
+                    
+                run_name = f"{device}/{nids_model.name}_{nids_model.threshold:.3f}/{seed}_{start_name}_{plane_name}"
+
+                boundary_path = f"../adversarial_data/{run_name}/"
+                plot_path = f"exp_figs/db_vis/{run_name}/"
+                log_path = f"boundary_logs/{run_name}"
+                if not os.path.exists(boundary_path):
+                    os.makedirs(boundary_path)
+                if not os.path.exists(plot_path):
+                    os.makedirs(plot_path)
+                if not os.path.exists(log_path):
+                    os.makedirs(log_path)
+
+                draw_i = 0
+                for draw_plots, fn, idx, start, p in tqdm(zip(draw, file_names, target_idx, start_samples, plane_dir)):
+                    
+                    logger_level = None
+                    write=True
+
+                    print(run_name, idx, nids_model.predict(
+                        start[np.newaxis, :]))
+
+                    statistics = boundary_traversal(
+                        baseline_nids=nids_model, dr_model=dr_model,
+                        output_boundary_path=boundary_path, start_position=start, plane=p,
+                         run_name=run_name, max_step=0.1,
+                        max_iter=2000, logger_level=logger_level,
+                        eps=1e-3*nids_model.threshold, draw_plots=draw_plots, idx=idx, write=write)
+                    
+                    if write:
+                        csv_file.write(
+                            ",".join(list(map(str, [run_name,fn, idx]+list(statistics.values())))))
+                        csv_file.write("\n")
+                        csv_file.flush()
+                    else:
+                        print(statistics)
+
+            csv_file.close()
+
+            # draw_db(dr_model, files,
+            #         heat_map=-1, file_name=f"{dr_model.name}_{sampling_method}", bidirectional=bidirectional)

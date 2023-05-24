@@ -54,23 +54,19 @@ class KitNET:
     # x: a numpy array of length n
     # Note: KitNET automatically performs 0-1 normalization on all attributes.
     def process(self, x):
-        # If both the FM and AD are in execute-mode
-        if self.n_trained >= self.FM_grace_period + self.AD_grace_period:
-            if x.ndim == 1:
-                x = np.expand_dims(x, axis=0)
-            non_nan_idx = np.where(~np.isnan(x).all(axis=1))
+        if x.ndim == 1:
+            x = np.expand_dims(x, axis=0)
+        non_nan_idx = np.where(~np.isnan(x).all(axis=1))
 
-            ret_array = np.zeros(x.shape[0])
-            ret_array.fill(np.nan)
-            ret_array[non_nan_idx] = self.execute(x[non_nan_idx])
-            # if x.shape[0] > 2:
-            # print("x", x[non_nan_idx][:2])
-            # print("ret", ret_array[non_nan_idx][:2])
-            # raise
-            return ret_array
-        else:
-            self.train(x)
-            return 0.0
+        ret_array = np.zeros(x.shape[0])
+        ret_array.fill(np.nan)
+
+        ret_array[non_nan_idx] = self.execute(x[non_nan_idx])
+        # if x.shape[0] > 2:
+        # print("x", x[non_nan_idx][:2])
+        # print("ret", ret_array[non_nan_idx][:2])
+        # raise
+        return ret_array
 
     # alias so it is compatible with sklearn models, input and output are all 2d arrays
     def decision_function(self, x):

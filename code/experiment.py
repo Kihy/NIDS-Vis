@@ -304,10 +304,9 @@ def train(dr_type, dr_param, training_param):
             autoencoder = get_ae(dr_type, dr_param)
 
         train_tf_model(autoencoder,
-                       training_param, None, dr_param['model_name'])
+                       training_param, None, dr_param['model_name'],save_epochs=[1,20,40,60,80,100])
 
-        tf.keras.models.save_model(
-            autoencoder, f"../models/{dr_param['model_name']}", options=tf.saved_model.SaveOptions(experimental_custom_gradients=True))
+        
 
 
 def train_sklearn_model(dr_model, training_param):
@@ -320,18 +319,18 @@ def train_sklearn_model(dr_model, training_param):
         dr_model=dr_model.fit(traffic_ds)
     return dr_model
 
-def train_tf_model(dr_model, training_param, scaler, model_name, dtype="float32"):
+def train_tf_model(dr_model, training_param, scaler, model_name,save_epochs, dtype="float32"):
 
     train_log_dir = f'logs/{model_name}/train'
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
 
     traffic_ds = get_dataset(
         training_param["train_paths"], training_param["batch_size"], training_param["shuffle"], scaler,  dtype=dtype)
-
+    logs = {}
+    
     for i in tqdm(range(training_param["epochs"])):
-
         for x in tqdm(traffic_ds, leave=False, position=1, desc="Train"):
-
+            
             hist = dr_model.custom_train_step(x)
 
         nb_epochs = dr_model.increment_epoch()
@@ -340,9 +339,12 @@ def train_tf_model(dr_model, training_param, scaler, model_name, dtype="float32"
             for key, value in hist.items():
                 tf.summary.scalar(f"losses/{key}", value, step=nb_epochs)
 
-        if nb_epochs == 1 or nb_epochs == training_param["epochs"] or nb_epochs % training_param["test_iter"] == 0:
-            test_ae(2**10,
-                    scaler, model_name, training_param, autoencoder=dr_model, step=nb_epochs)
+        # if nb_epochs == 1 or nb_epochs == training_param["epochs"] or nb_epochs % training_param["test_iter"] == 0:
+        #     test_ae(2**10,
+        #             scaler, model_name, training_param, autoencoder=dr_model, step=nb_epochs)
+        if i+1 in save_epochs:
+            tf.keras.models.save_model(
+            dr_model, f"../models/{model_name}_{nb_epochs}", options=tf.saved_model.SaveOptions(experimental_custom_gradients=True))
 
 
 def visualise_latent_space(model_type, model_name, scaler, feature_paths, feature_names, resolution=(100,100),
@@ -505,10 +507,13 @@ def plot_latent_similarity(resolution, autoencoder, benign_latent, benign_recons
 if __name__ == '__main__':
 
     alphas = [10.0]
-    denoise = [True]
+    denoise = [False,True]
     double_recon = [False]
+    activation=["sigmoid","relu"]
     losses = [
+        ["recon_dist_loss"],
         # ["recon_loss"],
+        ["recon_loss", "recon_dist_loss"]
         # ["recon_loss", "ranking_loss"],
 
         # ["recon_loss", "ranking_loss", "sw_loss"],
@@ -517,7 +522,7 @@ if __name__ == '__main__':
         # ['ranking_loss', "sliced_topo_loss"],
         # ["ranking_loss", "recon_loss"],
         # ['recon_loss', "sliced_topo_loss"],
-        ['contractive_loss', 'ranking_loss', "dist_loss"],
+        # ['contractive_loss', 'ranking_loss', "dist_loss"],
         # ['ranking_loss', "sw_loss", "dist_loss2"],
         # ["ranking_loss", "topological_loss"],
         # ["recon_loss", "sliced_topo_loss"],
@@ -540,6 +545,7 @@ if __name__ == '__main__':
 
         # "sgd": tf.keras.optimizers.SGD()
     }
+    lat_dims=[2]
 
     # scaler_path = "../../mtd_defence/models/uq/autoencoder/Cam_1_scaler.pkl"
     scaler_type = "min_max"
@@ -609,8 +615,10 @@ if __name__ == '__main__':
     # train(save_type, {"model_name":model_name, "config":{"n_components": 2, "perplexity":100,"n_jobs":8}}, sk_train_param)
     # visualise_latent_space(**eval_param)
     
-    ae_training_param={"train_paths":["../../mtd_defence/datasets/uq/benign/Cam_1.csv"],
-                       "epochs":1000,
+    ae_training_param={"train_paths":[#"../../mtd_defence/datasets/uq/benign/Cam_1.csv"
+        "../data/Cam_1_train.csv"
+        ],
+                       "epochs":100,
                        "batch_size":1024,
                        "shuffle":True, 
                        "continue_training":False,
@@ -624,36 +632,60 @@ if __name__ == '__main__':
                        }
 
     # fc = train_feature_cluster(ae_training_param["train_paths"][0], 2**10)
-    for alpha, loss, dn, dr, reduce_type, optimizer in product(alphas, losses, denoise, double_recon, reduce_types.items(), optimizers.items()):
+
+    
+    
+    with open("configs/nids_models.json","r") as f:
+        nids_db=json.load(f)
+    for alpha, loss, dn, dr, reduce_type, optimizer, act,lat in product(alphas, losses, denoise, double_recon, reduce_types.items(), optimizers.items(), activation, lat_dims):
         reduce_name, reduce = reduce_type
         opt_name, opt_dict = optimizer
-        model_name = f"{scaler_type}_{reduce_name}_{alpha}_{'_'.join(loss)}_{opt_name}{'_denoising' if dn else ''}_2d_{lr}{'_double_recon' if dr else ''}"
-        
+        # model_name = f"{scaler_type}_{reduce_name}_{alpha}_{'_'.join(loss)}_{opt_name}{'_denoising' if dn else ''}_2d_{lr}{'_double_recon' if dr else ''}"
+        model_name=f"{'denoising_' if dn else ''}autoencoder_{act}_{lat}_D{'R' if 'recon_loss' in loss else ''}"
         opt = tf.keras.optimizers.get(opt_dict)
-        # ae_param = {"input_dim": 100,
-        #             "latent_dim": 2,
-        #             "latent_slices": 200,
-        #             "window_size": 64,
-        #             "step_size": 1,
-        #             "batch_size": 2**7,
-        #             "fc": fc,
-        #             "reduce": reduce,
-        #             "alpha": alpha,
-        #             "include_losses": loss,
-        #             "opt": opt,
-        #             # "scaler": None
-        #             "scaler": tf_scaler,
-        #             "num_neurons": [50, 20, 10],
-        #             "denoise": dn,
-        #             "shape":"circular",
-        #             "double_recon": dr
-                    # "model_name":model_name
-        #             }
+        print(model_name)
+        
+        ae_param = {"input_dim": 100,
+                    "latent_dim": lat,
+                    "latent_slices": 200,
+                    "window_size": 64,
+                    "step_size": 1,
+                    "batch_size": 2**7,
+                    "fc": None,
+                    "activation":act,
+                    "reduce": reduce,
+                    "alpha": alpha,
+                    "include_losses": loss,
+                    "opt": opt,
+                    # "scaler": None
+                    "scaler": tf_scaler,
+                    "num_neurons": [50],
+                    "denoise": dn,
+                    "shape":"circular",
+                    "double_recon": dr,
+                    "model_name":model_name
+                    }
 
         
         eval_param["model_name"]=model_name
         eval_param["model_type"]="tf"
         print(f"training {model_name}")
-        # train("FC", ae_param, ae_training_param)
+        train("FC", ae_param, ae_training_param)
+        
+        
+        for i in [1,20,40,60,80,100]:
+            nids_db[f"{model_name}_{i}"]={
+                "abbrev":f"{'DAE' if dn else 'AE'}{'_R' if act=='relu' else ''}D-{i}",
+                "path":f"../models/{model_name}_{i}",
+                    "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32"}
+            
+        with open("configs/nids_models.json","w") as f:    
+            json.dump(nids_db, f, indent=4)
+        
 
-        visualise_latent_space(**eval_param)
+            
+        # visualise_latent_space(**eval_param)

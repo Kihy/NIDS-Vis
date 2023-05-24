@@ -31,7 +31,7 @@ def get_ae(ae_type, ae_param):
 
 class Autoencoder(tf.keras.Model, ABC):
     def __init__(self, shape, input_dim, latent_dim, num_neurons, denoise, double_recon,
-                 latent_slices, scaler, window_size, step_size, fc, batch_size, reduce,
+                 latent_slices, scaler, window_size, step_size, fc, batch_size, reduce, activation,
                  alpha, include_losses, opt,*args, **kwargs):
         super(Autoencoder, self).__init__()
         self.nb_epochs = tf.Variable(0., trainable=False)
@@ -47,7 +47,7 @@ class Autoencoder(tf.keras.Model, ABC):
         self.step_size = step_size
         self.denoise = denoise
         self.include_losses = include_losses + ["total_loss"]
-        self.encoder, self.decoder = self.create_encoder_decoder(num_neurons)
+        self.encoder, self.decoder = self.create_encoder_decoder(num_neurons, activation)
         if "topological_loss" in include_losses:
             self.rl = RipsLayer(homology_dimensions=[0])
 
@@ -132,7 +132,7 @@ class Autoencoder(tf.keras.Model, ABC):
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(x)
 
-            encoded, recon_loss, decoded_x = self.call(
+            encoded, recon_loss, decoded_x = self.__call__(
                 x, training=True, denoise=self.denoise, double_recon=self.double_recon)
 
             # get existing losses (activity regularization)
@@ -147,8 +147,13 @@ class Autoencoder(tf.keras.Model, ABC):
                     else:
                         reduced_recon_loss = self.reduce(
                             tf.keras.losses.mse(x, decoded_x))
-                    loss_value = reduced_recon_loss
-
+                    
+                    # tf.print(dist_loss, reduced_recon_loss)
+                    loss_value = reduced_recon_loss 
+                    # loss_value=dist_loss
+                elif loss_name=="recon_dist_loss":
+                    loss_value = tf.keras.losses.kullback_leibler_divergence(recon_loss, tf.exp(tf.random.normal(recon_loss.shape, -5,1)))
+                    
                 elif loss_name == "contractive_loss":
                     jacobian = tape.batch_jacobian(encoded, x)
                     loss_value = tf.reduce_mean(
@@ -346,27 +351,29 @@ class TRec(tf.keras.layers.Layer):
 
 
 class FC_AE(Autoencoder):
-    def create_encoder_decoder(self, num_neurons):
+    def create_encoder_decoder(self, num_neurons, activation="relu"):
         use_bias = True
-        encoder_layers = [layers.Dense(num_neurons[0], input_shape=(self.input_dim,), use_bias=use_bias),
+        encoder_layers = [layers.Dense(num_neurons[0], input_shape=(self.input_dim,), use_bias=use_bias, activation=activation),
                           # tf.keras.layers.BatchNormalization(),
-                          layers.LeakyReLU(0.2),
+                        #   layers.LeakyReLU(0.2),
                           ]
+        
         for i in num_neurons[1:]:
-            encoder_layers.extend([layers.Dense(i, use_bias=use_bias),
+            encoder_layers.extend([layers.Dense(i, use_bias=use_bias, activation=activation),
                                    # tf.keras.layers.BatchNormalization(),
-                                   layers.LeakyReLU(0.2),
+                                #    layers.LeakyReLU(0.2),
                                    ])
         encoder_layers.append(layers.Dense(self.latent_dim, use_bias=use_bias))
         encoder = tf.keras.Sequential(encoder_layers)
 
-        decoder_layers = [layers.Dense(num_neurons[-1], input_shape=(self.latent_dim,), use_bias=use_bias),
+        decoder_layers = [layers.Dense(num_neurons[-1], input_shape=(self.latent_dim,), use_bias=use_bias, activation=activation),
                           # tf.keras.layers.BatchNormalization(),
-                          layers.LeakyReLU(0.2)]
+                        #   layers.LeakyReLU(0.2)
+                        ]
         for i in num_neurons[::-1][1:]:
-            decoder_layers.extend([layers.Dense(i, use_bias=use_bias),
+            decoder_layers.extend([layers.Dense(i, use_bias=use_bias, activation=activation),
                                    # tf.keras.layers.BatchNormalization(),
-                                   layers.LeakyReLU(0.2),
+                                #    layers.LeakyReLU(0.2),
                                    ])
         decoder_layers.append(layers.Dense(self.input_dim, use_bias=use_bias))
         decoder = tf.keras.Sequential(decoder_layers)
@@ -375,8 +382,7 @@ class FC_AE(Autoencoder):
 
     @ tf.function
     def preprocess(self, x):
-        x = cluster_feature(x, self.fc)
-        return x
+        return cluster_feature(x, self.fc)
 
     @ tf.function
     def postprocess(self, x):
