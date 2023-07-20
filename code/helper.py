@@ -66,6 +66,7 @@ class BaseModel:
                  dr_output_index=None, threshold=None, flip_score=False, scaler=None, dtype="float64", min_feature=None,abbrev=None, **kwargs):
         model=load_model(save_type, path)
         self.pred_func=getattr(model, func_name)
+        # print(name, model.summary())
         if hasattr(model, "inverse_transform"):
             self.inverse_func=model.inverse_transform
         else:
@@ -146,7 +147,7 @@ class HybridModel(BaseModel, AnomalyDetectionMixin, DimensionalityReductionMixin
     pass
         
 
-def get_map_func(scaler, dtype="float32"):
+def get_map_func(scaler, ndim, dtype="float32"):
     # if scaler:
     #     data_min = scaler.data_min_
     #     data_range = scaler.data_range_
@@ -156,8 +157,9 @@ def get_map_func(scaler, dtype="float32"):
     #     data_range = 1
 
     def parse_csv(line):
+        
         line = tf.io.decode_csv(line, record_defaults=[
-                                0. for i in range(100)], select_cols=list(range(100)))
+                                0. for i in range(ndim)], select_cols=list(range(ndim)))
         data = tf.transpose(tf.stack(tf.cast(line, dtype=dtype)))
 
         if scaler:
@@ -191,7 +193,7 @@ def get_files(file_ids):
     
     
 
-def get_dataset(path, batch_size, shuffle=False, scaler=None, frac=1, total_rows=None, read_with="tf", seed=None, drop_reminder=True, dtype="float32", skip_header=True):
+def get_dataset(path, batch_size, ndim=100, shuffle=False, scaler=None, frac=1, total_rows=None, read_with="tf", seed=None, drop_reminder=True, dtype="float32", skip_header=True):
 
     if read_with == "tf":
         tf_ds = tf.data.TextLineDataset(path)
@@ -210,7 +212,7 @@ def get_dataset(path, batch_size, shuffle=False, scaler=None, frac=1, total_rows
             tf_ds = tf_ds.filter(
                 lambda x: tf.random.uniform(shape=[], seed=seed) < frac)
            
-        tf_ds = tf_ds.map(get_map_func(scaler, dtype=dtype))
+        tf_ds = tf_ds.map(get_map_func(scaler, ndim, dtype=dtype))
 
     elif read_with == "pd":
         if seed:
@@ -626,7 +628,8 @@ def get_gpu_memory():
                           for i, x in enumerate(memory_free_info)]
     print(memory_free_values)
 
-
+def divide_no_nan(a,b):
+    return np.divide(a, b, out=np.zeros_like(a), where=b!=0)
 class MinMaxScaler:
     def __init__(self, dtype="float32"):
         self.data_min_ = 0
@@ -649,7 +652,7 @@ class MinMaxScaler:
     def transform(self, X):
         original_dtype=X.dtype
         X=tf.cast(X, self.dtype)
-        transformed_value=(X - self.data_min_) / (self.data_max_ - self.data_min_)
+        transformed_value= tf.math.divide_no_nan((X - self.data_min_) ,(self.data_max_ - self.data_min_))
         return tf.cast(transformed_value, original_dtype)
 
     @tf.function

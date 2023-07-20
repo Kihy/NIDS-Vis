@@ -47,7 +47,7 @@ def feature_to_2d(x_0, features, q, func=None, feature_range=None):
     if feature_range is None:
         diff_vector = (features-x_0)
     else:
-        diff_vector = (features-x_0)/feature_range
+        diff_vector = divide_no_nan(features-x_0, feature_range)
     result, residual, _, _ = np.linalg.lstsq(q, diff_vector.T, rcond=None)
 
     if feature_range is None:
@@ -641,14 +641,16 @@ def boundary_traversal(baseline_nids, start_position, plane, output_boundary_pat
         raise ValueError(
             "plane must be two vectors, random or grad-attrib")
 
-    
-    v/=feature_range
+
+    v = divide_no_nan(v, feature_range)
+
     
     cosine = angle(v[None, 0], v[None, 1])
     statistics["v1v2angle"] = cosine
     
+
     A, _ = np.linalg.qr(v.T)
-    
+
     #ensure the first vector have the same sign
     if np.sign(A[0,0])!=np.sign(v[0,0]):
         A*=-1
@@ -750,7 +752,7 @@ def boundary_traversal(baseline_nids, start_position, plane, output_boundary_pat
                 logger.info(f"after step {t+2} score {x_np1_score}")
 
                 # find coordinate in boundary plane
-                coord = (x_np1-start_position)/feature_range
+                coord=divide_no_nan((x_np1-start_position), feature_range)
                 coords, res, _, _ = np.linalg.lstsq(
                     A, np.hstack([coord.T, tangent_d.T]), rcond=None)
                 logger.info(
@@ -838,11 +840,12 @@ def boundary_traversal(baseline_nids, start_position, plane, output_boundary_pat
                 elif symbol == "cross":
                     statistics["jagged"] += 1
 
+            
             x_np1_coord, _, _, _ = np.linalg.lstsq(
-                A, ((x_np1-start_position)/feature_range).T, rcond=None)
+                A, divide_no_nan((x_np1-start_position),feature_range).T, rcond=None)
 
             dist_from_prev = ln_distance(
-                x_np1/feature_range, x_n/feature_range, 2)[0, 0]
+                divide_no_nan(x_np1,feature_range), divide_no_nan(x_n,feature_range), 2)[0, 0]
             if logger_level:
                 logger.debug(f"symbol {symbol} counter {fail_counter}")
                 logger.info(f"distance {dist_from_prev}")
@@ -879,7 +882,7 @@ def boundary_traversal(baseline_nids, start_position, plane, output_boundary_pat
                     half1=True
             else:
                 # check if we have reached halfway point and we have moved sufficiently far away
-                cond=t-half_way>10 and ln_distance(end_coord, x_n/feature_range, 2)<0.1 
+                cond=t-half_way>10 and ln_distance(end_coord, divide_no_nan(x_n,feature_range), 2)<0.1 
                 
             if cond:
                 early_stop_flag = True
@@ -887,7 +890,7 @@ def boundary_traversal(baseline_nids, start_position, plane, output_boundary_pat
                 statistics["complete"] += 1
                 # if stopping at pi
                 
-                end_coord=np.copy(x_n)/feature_range
+                end_coord=divide_no_nan(np.copy(x_n),feature_range)
             
             prev_angle = theta
 
@@ -1264,7 +1267,7 @@ def sample_n_from_csv(path, n=None, row_idx=None, ignore_rows=0, total_rows=None
                              replace=False)+ignore_rows
     row_idx = np.sort(row_idx)
     if path.endswith(".csv"):
-        df = pd.read_csv(path, usecols=list(range(100)),
+        df = pd.read_csv(path, usecols=list(range(46)),
                         skiprows=lambda x: x not in row_idx, header=header)
         return row_idx, df.to_numpy()
     if path.endswith(".npy"):
@@ -1366,20 +1369,31 @@ def test_nids(target_nids, scaler_path, file_path):
     plt.tight_layout()
     plt.savefig('exp_figs/benign_as.png')
 
-def reservoir_sample(files, file_db, nids, n=1000):
+def reservoir_sample(files, nids=None, n=1000, near_boundary=True, file_db=None):
     reservoir=[]
     idx=[]
     file_names=[]
     counter=0
     for file in files:
-        ds=get_dataset(file_db[file]["path"],1024,False,None,1,seed=42,drop_reminder=False)
-
+        if file_db is not None:
+            file=file_db[file]
+        
+        if near_boundary:
+            ds=get_dataset(file["path"],1024,100,False,None,1,seed=42,drop_reminder=False)
+        else:
+            ds=get_dataset(file["path"],1024,100,False,None,total_rows=int(file["frac"]*file["total_rows"]),seed=42,drop_reminder=False)
         counter2=0
         for data in tqdm(ds):
             data=data.numpy()
-            scores=nids.predict(data)
-            lower_idx=np.where((nids_model.threshold*0.9<scores) & (scores<nids_model.threshold*1.1))
-            lower_data=data[lower_idx]
+            
+            
+            if near_boundary:
+                scores=nids.predict(data)
+                lower_idx=np.where((nids.threshold*0.8<scores) & (scores<nids.threshold*1.2))
+                lower_data=data[lower_idx]
+            else:
+                lower_data=data
+                lower_idx=[np.arange(data.shape[0])]
             
             if lower_data.size==0:
                 counter+=data.shape[0]
@@ -1391,7 +1405,7 @@ def reservoir_sample(files, file_db, nids, n=1000):
                 if len(reservoir)<n:
                     reservoir.append(sample)
                     idx.append(counter2+i)
-                    file_names.append(file)
+                    file_names.append(file["abbrev"])
                     
                 else:
                     j = np.random.randint(0,counter+i)
@@ -1399,19 +1413,20 @@ def reservoir_sample(files, file_db, nids, n=1000):
                     if j < n:
                         reservoir[j] = sample
                         idx[j]=counter2+i
-                        file_names[i]=file
+                        file_names[j]=file["abbrev"]
             counter+=data.shape[0]
             counter2+=data.shape[0]
     return np.array(idx), np.array(reservoir), file_names
 
 if __name__ == '__main__':
-    dataset = "uq"
-    device = "Cam_1"
-    mtd_model_path = f"../../mtd_defence/models/{dataset}/mtd/Cam_1/fm0_mm1_am20"
+    dataset = "Cam_1"
     scaler_type = "min_max"
-    scaler_path = f"../../mtd_defence/models/uq/autoencoder/Cam_1_scaler.pkl"
+    scaler_path = f"../../mtd_defence/models/uq/autoencoder/{dataset}_scaler.pkl"
     with open(scaler_path, "rb") as f:
         scaler = pickle.load(f)
+        
+    if not os.path.exists(f"exp_csv/db_characteristics/{dataset}/"):
+        os.mkdir(f"exp_csv/db_characteristics/{dataset}/")
 
     sampling_method = None
     distinguish_start_end = sampling_method == None
@@ -1445,29 +1460,34 @@ if __name__ == '__main__':
 
     n_samples = 1000
     seed = 42
-    draw_prob=0.5
+    draw_prob=0
     
     
     _, benign_samples = sample_n_from_csv(
-        **file_db["Cam_1"], n=n_samples*2, seed=seed+1)
+        **file_db[dataset], n=n_samples*2, seed=seed+1)
     
 
 
     # explaining adversarial examples
     rng = np.random.default_rng(seed)
     
-    benign_tuple = ("Cam_1", np.hstack([benign_samples[:n_samples,np.newaxis,:], benign_samples[n_samples:,np.newaxis,:]]))
+    benign_tuple = (f"{dataset}", np.hstack([benign_samples[:n_samples,np.newaxis,:], benign_samples[n_samples:,np.newaxis,:]]))
     
-    starts = ["Cam_1","All"]
+    starts = ["All", dataset]
     
-    planes=[benign_tuple]
+    planes=["random",benign_tuple]
     
  
-    ae=["denoising_autoencoder_sigmoid_2_D","autoencoder_relu_2_D" ,"autoencoder_sigmoid_2_D",
+    ae=[
+        # "autoencoder_relu_2" ,"autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2","autoencoder_sigmoid_12",#"kitsune"
+        "denoising_autoencoder_sigmoid_2_D","autoencoder_relu_2_D" ,"autoencoder_sigmoid_2_D",
         "denoising_autoencoder_sigmoid_2_filtered_0.2","autoencoder_relu_2_filtered_0.2" ,"autoencoder_sigmoid_2_filtered_0.2",
-        "kitsune","autoencoder_relu_2" ,"autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2","autoencoder_sigmoid_25"]
+    # "kitsune_filtered_0.2"
+    # "kitsune"
+        ]
     epochs=["1","20","40","60","80","100"]
     target_nidses =  [f"{a}_{e}" for a, e in itertools.product(ae, epochs)]
+    target_nidses.append("kitsune_filtered_0.2_1")
 
 
     for start_name in starts:
@@ -1481,21 +1501,24 @@ if __name__ == '__main__':
             file_names=[start_name for i in range(n_samples)]
             
         
-        for nids_model in target_nidses:
-            nids_model = get_nids_model(nids_model, "opt_t") 
+        for model_name in target_nidses:
+            
+            nids_model = get_nids_model(f'{dataset}_{model_name}', "opt_t") 
+            
+            
             if near_boundary:
                 start_name="All"
-                target_idx, start_samples, file_names=reservoir_sample(["Cam_1","ACK","SYN","UDP","PS","SD"], file_db, nids_model, n_samples)
-                
+                target_idx, start_samples, file_names=reservoir_sample([f"{dataset}",f"{dataset}_ATK"],  nids_model, n_samples, file_db=file_db)
             
-            draw=np.random.choice(a=[False, True], size=target_idx.shape, p=[draw_prob, 1-draw_prob])  
+            
+            draw=np.random.choice(a=[False, True], size=target_idx.shape, p=[1-draw_prob, draw_prob])  
             
              
-            filename=f"exp_csv/db_characteristics/{nids_model.name}_{nids_model.threshold:.3f}_bt_results_{start_name}.csv"
+            filename=f"exp_csv/db_characteristics/{dataset}/{model_name}_{nids_model.threshold:.3f}_bt_results_{start_name}.csv"
             file_exists = os.path.isfile(filename)
             csv_file = open(filename, "w")
-            if not file_exists:
-                csv_file.write("run_name,file,idx,score,drawn,init,init_dist,irregular,jagged,failed,discontinuous,distance,complete,enclosed,v1v2angle,total,std,pos perc,area\n")
+            # if not file_exists:
+            csv_file.write("run_name,file,idx,score,drawn,init,init_dist,irregular,jagged,failed,discontinuous,distance,complete,enclosed,v1v2angle,total,std,pos perc,area\n")
 
             for plane in planes:                
                 dr_model=None
@@ -1516,7 +1539,7 @@ if __name__ == '__main__':
                     plane_dir = ["random" for _ in range(n_samples)]
                     
                     
-                run_name = f"{device}/{nids_model.name}_{nids_model.threshold:.3f}/{seed}_{start_name}_{plane_name}"
+                run_name = f"{dataset}/{nids_model.name}_{nids_model.threshold:.3f}/{seed}_{start_name}_{plane_name}"
 
                 boundary_path = f"../adversarial_data/{run_name}/"
                 plot_path = f"exp_figs/db_vis/{run_name}/"

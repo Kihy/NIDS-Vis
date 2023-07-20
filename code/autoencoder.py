@@ -48,6 +48,7 @@ class Autoencoder(tf.keras.Model, ABC):
         self.denoise = denoise
         self.include_losses = include_losses + ["total_loss"]
         self.encoder, self.decoder = self.create_encoder_decoder(num_neurons, activation)
+
         if "topological_loss" in include_losses:
             self.rl = RipsLayer(homology_dimensions=[0])
 
@@ -103,6 +104,7 @@ class Autoencoder(tf.keras.Model, ABC):
     def call(self, x, training=False, denoise=False, double_recon=False):
 
         x = self.scaler.transform(x)
+
         if denoise:
             noise = tf.random.uniform(
                 shape=x.shape, minval=-0.05, maxval=0.05, dtype=x.dtype)
@@ -113,14 +115,16 @@ class Autoencoder(tf.keras.Model, ABC):
         # encode_x = x
         encode_x = self.preprocess(input_x)
         encode_x = self.encoder(encode_x, training=training)
-
         decoded_x = self.decoder(encode_x, training=training)
         decoded_x1 = self.postprocess(decoded_x)
+        
         inverse_x = self.scaler.inverse_transform(decoded_x1)
+        
         recon_loss = tf.keras.losses.mse(x, decoded_x1)
         if double_recon:
             re_encoded_x = self.encoder(decoded_x, training=training)
             recon_loss += tf.keras.losses.mse(encode_x, re_encoded_x)
+        
         return encode_x, recon_loss, inverse_x
 
     def get_regularization_loss(self):

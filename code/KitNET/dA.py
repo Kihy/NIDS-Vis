@@ -56,7 +56,8 @@ def quantize_weights(w, k):
 
 
 class dA_params:
-    def __init__(self, n_visible=5, n_hidden=3, lr=0.001, corruption_level=0.0, gracePeriod=10000, hiddenRatio=None, normalize=True, input_precision=None, quantize=None):
+    def __init__(self, n_visible=5, n_hidden=3, lr=0.001, corruption_level=0.0, gracePeriod=10000, hiddenRatio=None, normalize=True, input_precision=None, quantize=None,
+                 norm_max=None, norm_min=None):
         self.n_visible = n_visible  # num of units in visible (input) layer
         self.n_hidden = n_hidden  # num of units in hidden layer
         self.lr = lr
@@ -66,6 +67,8 @@ class dA_params:
         self.normalize = normalize
         self.quantize = quantize
         self.input_precision = input_precision
+        self.norm_max=norm_max 
+        self.norm_min=norm_min
         if quantize:
             self.q_wbit, self.q_abit = quantize
 
@@ -79,8 +82,12 @@ class dA:
                 self.params.n_visible * self.params.hiddenRatio))
 
         # for 0-1 normlaization
-        self.norm_max = numpy.ones((self.params.n_visible,)) * -numpy.Inf
-        self.norm_min = numpy.ones((self.params.n_visible,)) * numpy.Inf
+        if self.params.norm_max is None: 
+            self.norm_max = numpy.ones((self.params.n_visible,)) * -numpy.Inf
+            self.norm_min = numpy.ones((self.params.n_visible,)) * numpy.Inf
+        else:
+            self.norm_max = self.params.norm_max
+            self.norm_min = self.params.norm_min
         self.n = 0
 
         self.rng = numpy.random.RandomState(1234)
@@ -177,14 +184,17 @@ class dA:
             "vbias": self.vbias
         }
         return params
+    def get_num_params(self):
+        return self.W.size+self.hbias.size+self.vbias.size
 
     def set_params(self, new_param):
         self.W = new_param["W"]
         self.hbias = new_param["hbias"]
         self.vbias = new_param["vbias"]
 
-    def execute(self, x):  # returns MSE of the reconstruction of x
-
+    def execute(self, x, verbose=False):  # returns MSE of the reconstruction of x
+        if verbose:
+            print("raw input", x)
         if self.n < self.params.gracePeriod:
             return 0.0
         else:
@@ -203,7 +213,10 @@ class dA:
                 pass
 
             z = self.reconstruct(x)
-
+            if verbose:
+                print(self.norm_max,self.norm_min)
+                print("normalised input", x)
+                print("recon",z)
             rmse = numpy.sqrt(((x - z) ** 2).mean(axis=1))  # MSE
 
             return rmse

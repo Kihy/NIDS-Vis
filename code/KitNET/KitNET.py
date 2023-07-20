@@ -41,6 +41,8 @@ class KitNET:
         self.ensembleLayer = []
         self.outputLayer = None
         self.quantize = quantize
+        self.norm_max = np.ones((n,)) * -np.Inf
+        self.norm_min = np.ones((n,)) * np.Inf
         if self.v is None:
             pass
             # print("Feature-Mapper: train-mode, Anomaly-Detector: off-mode")
@@ -88,6 +90,8 @@ class KitNET:
         if self.n_trained <= self.FM_grace_period and self.v is None:
             # update the incremetnal correlation matrix
             self.FM.update(x)
+            self.norm_max[x > self.norm_max] = x[x > self.norm_max]
+            self.norm_min[x < self.norm_min] = x[x < self.norm_min]
             if self.n_trained == self.FM_grace_period:  # If the feature mapping should be instantiated
                 self.v = self.FM.cluster(self.m)
                 self.__createAD__()
@@ -106,7 +110,11 @@ class KitNET:
                 pass
                 # print("Feature-Mapper: execute-mode, Anomaly-Detector: execute-mode")
         self.n_trained += 1
-
+    def summary(self):
+        
+        for idx, i in enumerate(self.ensembleLayer):
+            print(idx, i.get_num_params())
+        print("output", self.outputLayer.get_num_params())
     # force execute KitNET on x
     def execute(self, x):
         if x.ndim == 1:
@@ -123,7 +131,7 @@ class KitNET:
                 xi = x[:, self.v[a]]
 
                 S_l1[:, a] = self.ensembleLayer[a].execute(xi)
-
+            
             # OutputLayer
             return self.outputLayer.execute(S_l1)
 
@@ -131,7 +139,8 @@ class KitNET:
         # construct ensemble layer
         for map in self.v:
             params = AE.dA_params(n_visible=len(map), n_hidden=0, lr=self.lr, corruption_level=0, gracePeriod=0,
-                                  hiddenRatio=self.hr, normalize=self.normalize, input_precision=self.input_precision, quantize=self.quantize)
+                                  hiddenRatio=self.hr, normalize=self.normalize, input_precision=self.input_precision, quantize=self.quantize,
+                                  norm_max=self.norm_max[map], norm_min=self.norm_min[map])
             self.ensembleLayer.append(AE.dA(params))
 
         # construct output layer
