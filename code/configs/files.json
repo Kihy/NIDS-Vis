@@ -1,0 +1,362 @@
+{
+    "Cam_1": {
+        "abbrev": "Cam_1",
+        "path": "../../mtd_defence/datasets/uq/benign/Cam_1.csv",
+        "total_rows": 854685,
+        "frac": 1
+    },
+    "Cam_1_ACK": {
+        "abbrev": "ACK",
+        "path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
+        "total_rows": 1288203,
+        "frac": 0.01
+    },
+    "Cam_1_PS": {
+        "abbrev": "PS",
+        "path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_Port_Scanning.csv",
+        "total_rows": 2029,
+        "frac": 1
+    },
+    "Cam_1_SD": {
+        "abbrev": "SD",
+        "path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_Service_Detection.csv",
+        "total_rows": 2805,
+        "frac": 1
+    },
+    "Cam_1_filtered_0.2": {
+        "abbrev": "Cam_1_F0.2",
+        "path": "../data/Cam_1_train_filtered_0.2.csv",
+        "total_rows": 48118,
+        "frac": 1
+    },
+    "Cam_1_train": {
+        "abbrev": "Cam_1_T",
+        "path": "../data/Cam_1_train.csv",
+        "total_rows": 683776,
+        "frac": 1
+    },
+    "Cam_1_SYN": {
+        "abbrev": "SYN",
+        "path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv",
+        "total_rows": 687494,
+        "frac": 0.01
+    },
+    "Cam_1_UDP": {
+        "abbrev": "UDP",
+        "path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv",
+        "total_rows": 1699001,
+        "frac": 0.01
+    },
+    "Smartphone_1": {
+        "abbrev": "SP_1",
+        "path": "../../mtd_defence/datasets/uq/benign/Smartphone_1.csv",
+        "total_rows": 2865483,
+        "frac": 1
+    },
+    "Smartphone_1_UDP": {
+        "abbrev": "UDP",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smartphone_1/Smartphone_1_UDP_Flooding.csv",
+        "total_rows": 1469349,
+        "frac": 0.01
+    },
+    "Smartphone_1_SD": {
+        "abbrev": "SD",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smartphone_1/Smartphone_1_Service_Detection.csv",
+        "total_rows": 2226,
+        "frac": 1
+    },
+    "Smartphone_1_SYN": {
+        "abbrev": "SYN",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smartphone_1/Smartphone_1_SYN_Flooding.csv",
+        "total_rows": 1008766,
+        "frac": 0.01
+    },
+    "Smartphone_1_PS": {
+        "abbrev": "PS",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smartphone_1/Smartphone_1_Port_Scanning.csv",
+        "total_rows": 2114,
+        "frac": 1
+    },
+    "Smartphone_1_ACK": {
+        "abbrev": "ACK",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smartphone_1/Smartphone_1_ACK_Flooding.csv",
+        "total_rows": 864231,
+        "frac": 0.01
+    },
+    "Smartphone_1_train": {
+        "abbrev": "SP_1_T",
+        "path": "../data/Smartphone_1_train.csv",
+        "total_rows": 2291712,
+        "frac": 1
+    },
+    "Smartphone_1_filtered_0.2": {
+        "abbrev": "Smartphone_1_F0.2",
+        "path": "../data/Smartphone_1_train_filtered_0.2.csv",
+        "total_rows": 224839,
+        "frac": 1
+    },
+    "Smart_Clock_1": {
+        "abbrev": "SC_1",
+        "path": "../../mtd_defence/datasets/uq/benign/Smart_Clock_1.csv",
+        "total_rows": 6390782,
+        "frac": 1
+    },
+    "Smart_Clock_1_UDP": {
+        "abbrev": "UDP",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smart_Clock_1/Smart_Clock_1_UDP_Flooding.csv",
+        "total_rows": 554619,
+        "frac": 0.01
+    },
+    "Smart_Clock_1_SD": {
+        "abbrev": "SD",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smart_Clock_1/Smart_Clock_1_Service_Detection.csv",
+        "total_rows": 14148,
+        "frac": 1
+    },
+    "Smart_Clock_1_SYN": {
+        "abbrev": "SYN",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smart_Clock_1/Smart_Clock_1_SYN_Flooding.csv",
+        "total_rows": 320746,
+        "frac": 0.01
+    },
+    "Smart_Clock_1_PS": {
+        "abbrev": "PS",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smart_Clock_1/Smart_Clock_1_Port_Scanning.csv",
+        "total_rows": 2010,
+        "frac": 1
+    },
+    "Smart_Clock_1_ACK": {
+        "abbrev": "ACK",
+        "path": "../../mtd_defence/datasets/uq/malicious/Smart_Clock_1/Smart_Clock_1_ACK_Flooding.csv",
+        "total_rows": 602323,
+        "frac": 0.01
+    },
+    "Smart_Clock_1_train": {
+        "abbrev": "SC_1_T",
+        "path": "../data/Smart_Clock_1_train.csv",
+        "total_rows": 5111808,
+        "frac": 1
+    },
+    "Smart_Clock_1_train_filtered_0.2": {
+        "abbrev": "Smart_Clock_1_train_F0.2",
+        "path": "../data/Smart_Clock_1_train_filtered_0.2.csv",
+        "total_rows": 117360,
+        "frac": 1
+    },
+    "Raspberry_Pi_telnet": {
+        "abbrev": "RP",
+        "path": "../../mtd_defence/datasets/uq/benign/Raspberry_Pi_telnet.csv",
+        "total_rows": 1357782,
+        "frac": 1
+    },
+    "Raspberry_Pi_telnet_UDP": {
+        "abbrev": "UDP",
+        "path": "../../mtd_defence/datasets/uq/malicious/Raspberry_Pi_telnet/Raspberry_Pi_telnet_UDP_Flooding.csv",
+        "total_rows": 447132,
+        "frac": 0.01
+    },
+    "Raspberry_Pi_telnet_SD": {
+        "abbrev": "SD",
+        "path": "../../mtd_defence/datasets/uq/malicious/Raspberry_Pi_telnet/Raspberry_Pi_telnet_Service_Detection.csv",
+        "total_rows": 2541,
+        "frac": 1
+    },
+    "Raspberry_Pi_telnet_SYN": {
+        "abbrev": "SYN",
+        "path": "../../mtd_defence/datasets/uq/malicious/Raspberry_Pi_telnet/Raspberry_Pi_telnet_SYN_Flooding.csv",
+        "total_rows": 350179,
+        "frac": 0.01
+    },
+    "Raspberry_Pi_telnet_PS": {
+        "abbrev": "PS",
+        "path": "../../mtd_defence/datasets/uq/malicious/Raspberry_Pi_telnet/Raspberry_Pi_telnet_Port_Scanning.csv",
+        "total_rows": 2008,
+        "frac": 1
+    },
+    "Raspberry_Pi_telnet_ACK": {
+        "abbrev": "ACK",
+        "path": "../../mtd_defence/datasets/uq/malicious/Raspberry_Pi_telnet/Raspberry_Pi_telnet_ACK_Flooding.csv",
+        "total_rows": 711173,
+        "frac": 0.01
+    },
+    "Raspberry_Pi_telnet_train": {
+        "abbrev": "RP_T",
+        "path": "../data/Raspberry_Pi_telnet_train.csv",
+        "total_rows": 1085440,
+        "frac": 1
+    },
+    "Raspberry_Pi_telnet_train_filtered_0.2": {
+        "abbrev": "Raspberry_Pi_telnet_train_F0.2",
+        "path": "../data/Raspberry_Pi_telnet_train_filtered_0.2.csv",
+        "total_rows": 120139,
+        "frac": 1
+    },
+    "Google-Nest-Mini_1": {
+        "abbrev": "GN",
+        "path": "../../mtd_defence/datasets/uq/benign/Google-Nest-Mini_1.csv",
+        "total_rows": 5244602,
+        "frac": 1
+    },
+    "Google-Nest-Mini_1_UDP": {
+        "abbrev": "UDP",
+        "path": "../../mtd_defence/datasets/uq/malicious/Google-Nest-Mini_1/Google-Nest-Mini_1_UDP_Flooding.csv",
+        "total_rows": 1263015,
+        "frac": 0.01
+    },
+    "Google-Nest-Mini_1_SD": {
+        "abbrev": "SD",
+        "path": "../../mtd_defence/datasets/uq/malicious/Google-Nest-Mini_1/Google-Nest-Mini_1_Service_Detection.csv",
+        "total_rows": 10155,
+        "frac": 1
+    },
+    "Google-Nest-Mini_1_SYN": {
+        "abbrev": "SYN",
+        "path": "../../mtd_defence/datasets/uq/malicious/Google-Nest-Mini_1/Google-Nest-Mini_1_SYN_Flooding.csv",
+        "total_rows": 743948,
+        "frac": 0.01
+    },
+    "Google-Nest-Mini_1_PS": {
+        "abbrev": "PS",
+        "path": "../../mtd_defence/datasets/uq/malicious/Google-Nest-Mini_1/Google-Nest-Mini_1_Port_Scanning.csv",
+        "total_rows": 2010,
+        "frac": 1
+    },
+    "Google-Nest-Mini_1_ACK": {
+        "abbrev": "ACK",
+        "path": "../../mtd_defence/datasets/uq/malicious/Google-Nest-Mini_1/Google-Nest-Mini_1_ACK_Flooding.csv",
+        "total_rows": 833138,
+        "frac": 0.01
+    },
+    "Google-Nest-Mini_1_train": {
+        "abbrev": "GN_T",
+        "path": "../data/Google-Nest-Mini_1_train.csv",
+        "total_rows": 4195328,
+        "frac": 1
+    },
+    "Google-Nest-Mini_1_train_filtered_0.2": {
+        "abbrev": "Google-Nest-Mini_1_train_F0.2",
+        "path": "../data/Google-Nest-Mini_1_train_filtered_0.2.csv",
+        "total_rows": 77675,
+        "frac": 1
+    },
+    "SmartTV": {
+        "abbrev": "ST",
+        "path": "../../mtd_defence/datasets/uq/benign/SmartTV.csv",
+        "total_rows": 2444691,
+        "frac": 1
+    },
+    "SmartTV_UDP": {
+        "abbrev": "UDP",
+        "path": "../../mtd_defence/datasets/uq/malicious/SmartTV/SmartTV_UDP_Flooding.csv",
+        "total_rows": 1134947,
+        "frac": 0.01
+    },
+    "SmartTV_SD": {
+        "abbrev": "SD",
+        "path": "../../mtd_defence/datasets/uq/malicious/SmartTV/SmartTV_Service_Detection.csv",
+        "total_rows": 2476,
+        "frac": 1
+    },
+    "SmartTV_SYN": {
+        "abbrev": "SYN",
+        "path": "../../mtd_defence/datasets/uq/malicious/SmartTV/SmartTV_SYN_Flooding.csv",
+        "total_rows": 344558,
+        "frac": 0.01
+    },
+    "SmartTV_PS": {
+        "abbrev": "PS",
+        "path": "../../mtd_defence/datasets/uq/malicious/SmartTV/SmartTV_Port_Scanning.csv",
+        "total_rows": 2005,
+        "frac": 1
+    },
+    "SmartTV_ACK": {
+        "abbrev": "ACK",
+        "path": "../../mtd_defence/datasets/uq/malicious/SmartTV/SmartTV_ACK_Flooding.csv",
+        "total_rows": 931505,
+        "frac": 0.01
+    },
+    "SmartTV_train": {
+        "abbrev": "ST_T",
+        "path": "../data/SmartTV_train.csv",
+        "total_rows": 1954816,
+        "frac": 1
+    },
+    "SmartTV_train_filtered_0.2": {
+        "abbrev": "SmartTV_train_F0.2",
+        "path": "../data/SmartTV_train_filtered_0.2.csv",
+        "total_rows": 60344,
+        "frac": 1
+    },
+    "Lenovo_Bulb_1": {
+        "abbrev": "LB",
+        "path": "../../mtd_defence/datasets/uq/benign/Lenovo_Bulb_1.csv",
+        "total_rows": 22047,
+        "frac": 1
+    },
+    "Lenovo_Bulb_1_UDP": {
+        "abbrev": "UDP",
+        "path": "../../mtd_defence/datasets/uq/malicious/Lenovo_Bulb_1/Lenovo_Bulb_1_UDP_Flooding.csv",
+        "total_rows": 245932,
+        "frac": 0.01
+    },
+    "Lenovo_Bulb_1_SD": {
+        "abbrev": "SD",
+        "path": "../../mtd_defence/datasets/uq/malicious/Lenovo_Bulb_1/Lenovo_Bulb_1_Service_Detection.csv",
+        "total_rows": 2600,
+        "frac": 1
+    },
+    "Lenovo_Bulb_1_SYN": {
+        "abbrev": "SYN",
+        "path": "../../mtd_defence/datasets/uq/malicious/Lenovo_Bulb_1/Lenovo_Bulb_1_SYN_Flooding.csv",
+        "total_rows": 171047,
+        "frac": 0.01
+    },
+    "Lenovo_Bulb_1_PS": {
+        "abbrev": "PS",
+        "path": "../../mtd_defence/datasets/uq/malicious/Lenovo_Bulb_1/Lenovo_Bulb_1_Port_Scanning.csv",
+        "total_rows": 2341,
+        "frac": 1
+    },
+    "Lenovo_Bulb_1_ACK": {
+        "abbrev": "ACK",
+        "path": "../../mtd_defence/datasets/uq/malicious/Lenovo_Bulb_1/Lenovo_Bulb_1_ACK_Flooding.csv",
+        "total_rows": 167471,
+        "frac": 0.01
+    },
+    "Lenovo_Bulb_1_train": {
+        "abbrev": "LB_T",
+        "path": "../data/Lenovo_Bulb_1_train.csv",
+        "total_rows": 17408,
+        "frac": 1
+    },
+    "Lenovo_Bulb_1_train_filtered_0.2": {
+        "abbrev": "Lenovo_Bulb_1_train_F0.2",
+        "path": "../data/Lenovo_Bulb_1_train_filtered_0.2.csv",
+        "total_rows": 2135,
+        "frac": 1
+    },
+    "CICIoT": {
+        "abbrev": "CIC",
+        "path": "../data/CICIoT2023/benign.csv",
+        "total_rows": 1098194,
+        "frac": 1
+    },
+    "CICIoT_ATK": {
+        "abbrev": "ATK",
+        "path": "../data/CICIoT2023/attack.csv",
+        "total_rows": 45588383,
+        "frac": 0.01
+    },
+    "CICIoT_train": {
+        "abbrev": "CICIoT_T",
+        "path": "../data/CICIoT_train.csv",
+        "total_rows": 877568,
+        "frac": 1
+    },
+    "CICIoT_train_filtered_0.2": {
+        "abbrev": "CICIoT_train_F0.2",
+        "path": "../data/CICIoT_train_filtered_0.2.csv",
+        "total_rows": 88881,
+        "frac": 1
+    }
+}
