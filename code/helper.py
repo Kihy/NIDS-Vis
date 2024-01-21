@@ -18,8 +18,7 @@ import matplotlib.pyplot as plt
 import json
 from xpysom import XPySom
 import sys
-sys.path.insert(1, '../../mtd_defence/code')
-import train_mtd_am
+
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 rng = default_rng()

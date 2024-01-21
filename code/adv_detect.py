@@ -739,9 +739,7 @@ if __name__ == "__main__":
         
         
         
-    elif args.command=="adv_dist":
-        measure_feature_distance("uq","ACK_Flooding","autoencoder_0.1_10_3_False_pso0.5",854685, scaler=scaler)
-        
+
     elif args.command=="train_nids":
         
         training_datasets=[False, True]

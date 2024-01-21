@@ -8,7 +8,7 @@ from helper import *
 from KitNET.KitNET import *
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from integrated_gradients_bb import integrated_gradients
+# from integrated_gradients_bb import integrated_gradients
 from scipy.stats import binned_statistic_2d
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
@@ -1267,7 +1267,7 @@ def sample_n_from_csv(path, n=None, row_idx=None, ignore_rows=0, total_rows=None
                              replace=False)+ignore_rows
     row_idx = np.sort(row_idx)
     if path.endswith(".csv"):
-        df = pd.read_csv(path, usecols=list(range(46)),
+        df = pd.read_csv(path, usecols=list(range(100)),
                         skiprows=lambda x: x not in row_idx, header=header)
         return row_idx, df.to_numpy()
     if path.endswith(".npy"):
@@ -1432,8 +1432,7 @@ if __name__ == '__main__':
     distinguish_start_end = sampling_method == None
 
     atk_type = "bt"
-    # adv_path = f"../../mtd_defence/datasets/uq_network/adversarial/decision_boundary_adversarial/db_vis_0.01_20_3_False_pso0.5_None/csv/decision_boundary_adversarial_iter_0.csv"
-    # ae_name = "min_max_mean_10.0_recon_loss_sw_loss_contractive_loss_adam_denoising_2d_0.001_double_recon"
+
 
     dr_models = {"pca": {"type": "hybrid", "name": "pca", "save_type": "pkl", "path": "../models/pca.pkl",
                          "func_name": "transform", "scaler": scaler, "threshold": 0.3},
@@ -1450,13 +1449,6 @@ if __name__ == '__main__':
 
     bidirectional = True
 
-    # "ACK": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv", "color_scale": "Picnic", "frac": 0.03, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
-    # "SYN": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv", "color_scale": "Picnic", "frac": 0.05, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
-    # "UDP": {"file_path": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv", "color_scale": "Picnic", "frac": 0.02, "batch_size": 1024, "plot_batch_size": 1, "skip_header": True},
-    # "ACK_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/ACK_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_ACK_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
-    # "SYN_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/SYN_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_SYN_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
-    # "UDP_adv": {"file_path": "../../mtd_defence/datasets/uq/adversarial/Cam_1/UDP_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_UDP_Flooding_iter_0.csv", "color_scale": "Picnic", "frac": 0.1, "batch_size": 1024, "plot_batch_size": 1},
-    # }
 
     n_samples = 1000
     seed = 42
@@ -1508,7 +1500,7 @@ if __name__ == '__main__':
             
             if near_boundary:
                 start_name="All"
-                target_idx, start_samples, file_names=reservoir_sample([f"{dataset}",f"{dataset}_ATK"],  nids_model, n_samples, file_db=file_db)
+                target_idx, start_samples, file_names=reservoir_sample([f"{dataset}",f"{dataset}_ACK",f"{dataset}_SYN",f"{dataset}_UDP",f"{dataset}_SD",f"{dataset}_PS"],  nids_model, n_samples, file_db=file_db)
             
             
             draw=np.random.choice(a=[False, True], size=target_idx.shape, p=[1-draw_prob, draw_prob])  

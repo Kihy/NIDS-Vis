@@ -12,11 +12,12 @@ import matplotlib
 import scipy
 import seaborn as sns
 from plotly.subplots import make_subplots
-from shap_vis import *
+# from shap_vis import *
 import scienceplots
 from matplotlib.ticker import FormatStrFormatter
 # import cv2
 import fnmatch
+import itertools
 
 plt.style.use('science')
 
@@ -623,7 +624,7 @@ def compare_db_contour(nids, plane, idx, start,feature_range,n_cols=None, titles
                                 abbrev=f"{abbrev[:-1]} + DLF"
                             # else:
                             #     abbrev=f"{abbrev} (Ori.)"
-                            axes[row-1, col-1].text((plot_range[0][1]+plot_range[0][0])/2, plot_range[1][1]+0.5, f"{abbrev}", ha='center', va='center', fontsize=12)
+                            axes[row-1, col-1].text((plot_range[0][1]+plot_range[0][0])/2, plot_range[1][1]+0.8, f"{abbrev}", ha='center', va='center', fontsize=12)
                             
                             # if col%2==0:
                             #     axes[row-1, col-1].text((plot_range[0][1]+plot_range[0][0])/2, plot_range[1][1]+0.5, f"{abbrev} Random", ha='center', va='center', fontsize=12)
@@ -632,7 +633,7 @@ def compare_db_contour(nids, plane, idx, start,feature_range,n_cols=None, titles
                             
                             # axes[row-1, col-1].set_ylabel()
                         if col==1:
-                            axes[row-1, col-1].text(plot_range[0][0]-0.8, (plot_range[1][1]+plot_range[1][0])/2, f"{'Benign' if row%2==1 else 'Random'}", ha='center', va='center', rotation='vertical', fontsize=12)
+                            axes[row-1, col-1].text(plot_range[0][0]-1, (plot_range[1][1]+plot_range[1][0])/2, f"{'Benign' if row%2==1 else 'Random'}", ha='center', va='center', rotation='vertical', fontsize=12)
                             # axes[row-1, col-1].text(plot_range[0][0]-0.8, (plot_range[1][1]+plot_range[1][0])/2, f"Epoch: {epoch}", ha='center', va='center', rotation='vertical', fontsize=12)
                         
                     
@@ -714,17 +715,16 @@ if __name__=="__main__":
     #"kitsune_60","autoencoder_relu_2_40","autoencoder_sigmoid_25_100","autoencoder_sigmoid_2_100","denoising_autoencoder_sigmoid_2_100"
 
     nids_models=[
-    "autoencoder_relu_2","autoencoder_sigmoid_25","autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2",#"kitsune",
-    # "autoencoder_relu_2_filtered_0.2", "autoencoder_sigmoid_2_filtered_0.2","denoising_autoencoder_sigmoid_2_filtered_0.2",# "autoencoder_sigmoid_25"
-
+    "autoencoder_relu_2","autoencoder_sigmoid_2", "autoencoder_sigmoid_25", "denoising_autoencoder_sigmoid_2","kitsune",
+    # "autoencoder_relu_2_filtered_0.2", "autoencoder_sigmoid_2_filtered_0.2","denoising_autoencoder_sigmoid_2_filtered_0.2","kitsune_filtered_0.2"# "autoencoder_sigmoid_25"
     # "autoencoder_relu_2_D", "autoencoder_sigmoid_2_D","denoising_autoencoder_sigmoid_2_D",
     # "kitsune"
     ]
     #
     epochs=["100"]
     
-    model_names=[f"{dataset}_{j}_{i}" for i, j in itertools.product(epochs,nids_models)]
-    model_names.append(f"{dataset}_kitsune_1")
+    model_names=[f"{dataset}_{j}_{i}" if not j.startswith('kitsune') else f"{dataset}_{j}_1" for i, j in itertools.product(epochs,nids_models)]
+    # model_names.append(f"{dataset}_kitsune_1")
     # model_names.append(f"{dataset}_kitsune_filtered_0.2_1")
     nids_models=[get_nids_model(name,"opt_t") for name in model_names]
 
@@ -732,7 +732,7 @@ if __name__=="__main__":
     # orthogonal_plane,_=np.linalg.qr(test_data[[1,2]].T)
     # planes=[]
     
-    planes=[custom_interpolated_plane,test_data[[1,2]]]
+    planes=[custom_interpolated_plane, test_data[[1,2]]]
     # aux=test_data[3:]
     idx=[custom_point]
     
@@ -741,13 +741,13 @@ if __name__=="__main__":
     titles=None
     #"grad_attrib-ae","grad_attrib-pca","random","Cam_1", "stochastic", [[-8,3,201],[-7,5,201]]
     compare_db_contour(nids_models, planes, idx, dataset, feature_range, n_cols=5, titles=titles, 
-                       plot_range=[[-9,3,201],[-6,6,201]],
+                       plot_range=[[-9,3,101],[-6,6,101]],
                        
                         # plot_range=[[-0.1,0.1,1],[-0.1,0.1,1]],
                         backend="sns",
                         out_name=f"{dataset}_db_example", aux=custom_aux)
     #("cirlce",0.34349777798961395)
-    
+    raise
     
     chars=[]
     nids_models=[
