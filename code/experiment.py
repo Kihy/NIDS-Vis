@@ -10,14 +10,11 @@ import os
 import io
 from plotly.subplots import make_subplots
 from itertools import product
-from keract import get_activations
 import plotly.express as px
 import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.manifold import LocallyLinearEmbedding,Isomap
-import umap
-from openTSNE import TSNE
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 tf.get_logger().setLevel('WARNING')
@@ -505,204 +502,160 @@ def plot_latent_similarity(resolution, autoencoder, benign_latent, benign_recons
 
 
 if __name__ == '__main__':
-    dataset="CICIoT"
-    filtered=True
     
-    alphas = [10.0]
-    denoise = [False,True]
-    double_recon = [False]
-    activation=["sigmoid","relu"]
-    if filtered:
-        losses = [["recon_loss"]]
-    else:
-        losses = [
-            ["recon_dist_loss"],
-            ["recon_loss"],
-            # ["recon_loss", "recon_dist_loss"]
-            # ["recon_loss", "ranking_loss"],
+    devices=["Cam_1", "Google-Nest-Mini_1","Lenovo_Bulb_1", "Raspberry_Pi_telnet", "Smart_Clock_1","Smartphone_1","SmartTV"]
 
-            # ["recon_loss", "ranking_loss", "sw_loss"],
-            # ["recon_loss", "ranking_loss", "sliced_topo_loss"],
-            # ['ranking_loss', "sw_loss", "sliced_topo_loss"],
-            # ['ranking_loss', "sliced_topo_loss"],
-            # ["ranking_loss", "recon_loss"],
-            # ['recon_loss', "sliced_topo_loss"],
-            # ['contractive_loss', 'ranking_loss', "dist_loss"],
-            # ['ranking_loss', "sw_loss", "dist_loss2"],
-            # ["ranking_loss", "topological_loss"],
-            # ["recon_loss", "sliced_topo_loss"],
-            # ["recon_loss", "contractive_loss", "topological_loss"]
-            # ["recon_loss", "topological_loss"],
-            # ["recon_loss", "sw_loss", "topological_loss"]
-            # ["recon_loss", "contractive_loss"],
-            # ["recon_loss", "sw_loss"],
-            # ["recon_loss", "sw_loss", "contractive_loss"],
-            # ["recon_loss", "entropy", "sw_loss"],
-            # ["recon_loss", "distance_loss", "sw_loss"]
-        ]
+    filtered=False # True, 
+    denoise = [False] #,True
+    activation=["sigmoid"] #,"relu"
+
+    lat_dims=[25] #2,
+    alpha = 10.
+    loss=["recon_dist_loss"] #,
     reduce_types = {"mean": tf.reduce_mean}
     lr = 1e-3
     optimizers = {
-        # "rmsprop": tf.keras.optimizers.RMSprop(),
-        # "amsgrad": tf.keras.optimizers.Adam(amsgrad=True),
         "adam": {"class_name": "Adam",
                  "config": {"learning_rate": lr}}
+        }
 
-        # "sgd": tf.keras.optimizers.SGD()
-    }
-    lat_dims=[2,12]
-
-    # scaler_path = "../../mtd_defence/models/uq/autoencoder/Cam_1_scaler.pkl"
-    scaler_type = "min_max"
-    tf_scaler_path=f"../../mtd_defence/models/uq/autoencoder/{dataset}_{scaler_type}_scaler.pkl"
-    with open(tf_scaler_path, "rb") as f:
-        tf_scaler = pickle.load(f)
-    
-    sk_scaler_path = f"../../mtd_defence/models/uq/autoencoder/{dataset}_scaler.pkl"
-    with open(sk_scaler_path, "rb") as f:
-        sk_scaler = pickle.load(f)
+    for dataset in devices:
+        scaler_type = "min_max"
+        tf_scaler_path=f"../../mtd_defence/models/uq/autoencoder/{dataset}_{scaler_type}_scaler.pkl"
+        with open(tf_scaler_path, "rb") as f:
+            tf_scaler = pickle.load(f)
         
-    
-
-    if not os.path.exists("../plots"):
-        os.mkdir("../plots")
-
-
-
-    count = 0
-
-    feature_names = ["HT_MI_5_weight", "HT_MI_5_mean", "HT_MI_5_std", "HT_MI_3_weight", "HT_MI_3_mean", "HT_MI_3_std",
-                     "HT_MI_1_weight", "HT_MI_1_mean", "HT_MI_1_std", "HT_MI_0.1_weight",
-                     "HT_MI_0.1_mean", "HT_MI_0.1_std", "HT_MI_0.01_weight", "HT_MI_0.01_mean",
-                     "HT_MI_0.01_std", "HT_H_5_weight", "HT_H_5_mean", "HT_H_5_std", "HT_H_5_radius",
-                     "HT_H_5_magnitude", "HT_H_5_covariance", "HT_H_5_pcc", "HT_H_3_weight", "HT_H_3_mean",
-                     "HT_H_3_std", "HT_H_3_radius", "HT_H_3_magnitude", "HT_H_3_covariance", "HT_H_3_pcc",
-                     "HT_H_1_weight", "HT_H_1_mean", "HT_H_1_std", "HT_H_1_radius", "HT_H_1_magnitude", "HT_H_1_covariance",
-                     "HT_H_1_pcc", "HT_H_0.1_weight", "HT_H_0.1_mean", "HT_H_0.1_std", "HT_H_0.1_radius", "HT_H_0.1_magnitude",
-                     "HT_H_0.1_covariance", "HT_H_0.1_pcc", "HT_H_0.01_weight", "HT_H_0.01_mean", "HT_H_0.01_std",
-                     "HT_H_0.01_radius", "HT_H_0.01_magnitude", "HT_H_0.01_covariance", "HT_H_0.01_pcc", "HT_jit_5_weight",
-                     "HT_jit_5_mean", "HT_jit_5_std", "HT_jit_3_weight", "HT_jit_3_mean", "HT_jit_3_std", "HT_jit_1_weight",
-                     "HT_jit_1_mean", "HT_jit_1_std", "HT_jit_0.1_weight", "HT_jit_0.1_mean", "HT_jit_0.1_std", "HT_jit_0.01_weight",
-                     "HT_jit_0.01_mean", "HT_jit_0.01_std", "HT_Hp_5_weight", "HT_Hp_5_mean", "HT_Hp_5_std", "HT_Hp_5_radius",
-                     "HT_Hp_5_magnitude", "HT_Hp_5_covariance", "HT_Hp_5_pcc", "HT_Hp_3_weight", "HT_Hp_3_mean", "HT_Hp_3_std",
-                     "HT_Hp_3_radius", "HT_Hp_3_magnitude", "HT_Hp_3_covariance", "HT_Hp_3_pcc", "HT_Hp_1_weight", "HT_Hp_1_mean",
-                     "HT_Hp_1_std", "HT_Hp_1_radius", "HT_Hp_1_magnitude", "HT_Hp_1_covariance", "HT_Hp_1_pcc", "HT_Hp_0.1_weight",
-                     "HT_Hp_0.1_mean", "HT_Hp_0.1_std", "HT_Hp_0.1_radius", "HT_Hp_0.1_magnitude", "HT_Hp_0.1_covariance",
-                     "HT_Hp_0.1_pcc", "HT_Hp_0.01_weight", "HT_Hp_0.01_mean", "HT_Hp_0.01_std", "HT_Hp_0.01_radius",
-                     "HT_Hp_0.01_magnitude", "HT_Hp_0.01_covariance", "HT_Hp_0.01_pcc"]
-
-    feature_names = [i[:i.rindex("_")] for i in feature_names]
-
-
-
-    model_name = "tsne"
-    save_type="pkl"
-    sk_train_param = {"path": "../../mtd_defence/datasets/uq/benign/Cam_1.csv",
-                      "frac": 0.1, "read_with": "pd", "scaler": sk_scaler,
-                      "batch_size": -1,
-                      }
-    eval_param = {"model_type": save_type,
-                  "model_name":model_name,
-                  "feature_paths": {
-                      "Benign": ["../../mtd_defence/datasets/uq/benign/Cam_1.csv", "deep"],
-                      "ACK": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv", "matter"],
-                    #   "ACK_adv": ["../../mtd_defence/datasets/uq/adversarial/Cam_1/ACK_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_ACK_Flooding_iter_0.csv", "matter"],
-                    #   "SYN": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv", "matter"],
-                    #   "UDP": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv", "matter"],
-                  },
-                  "scaler":None,
-                  "frac": 0.05,
-                  "feature_names":feature_names,
-                  "plot_dist":False,
-                  "resolution": (200, 200),
-                 }
-    
-    # train(save_type, {"model_name":model_name, "config":{"n_components": 2, "perplexity":100,"n_jobs":8}}, sk_train_param)
-    # visualise_latent_space(**eval_param)
-    
-
-    ae_training_param={"train_paths":[#"../../mtd_defence/datasets/uq/benign/Cam_1.csv"
-        f"../data/{dataset}_train{'_filtered_0.2' if filtered else ''}.csv"
-        ],
-                       "dataset":dataset,
-                       "epochs":100,
-                       "save_epochs":[1,20,40,60,80,100],
-                       "batch_size":1024,
-                       "shuffle":True, 
-                       "continue_training":False,
-                       "test_iter":100,
-                       "test_paths": {
-                        "ACK": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
-                        "SYN": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv",
-                        "UDP": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv"
-                       
-                       }
-                       }
-
-    # fc = train_feature_cluster(ae_training_param["train_paths"][0], 2**10)
-
-    
-    
-    with open("configs/nids_models.json","r") as f:
-        nids_db=json.load(f)
+        sk_scaler_path = f"../../mtd_defence/models/uq/autoencoder/{dataset}_scaler.pkl"
+        with open(sk_scaler_path, "rb") as f:
+            sk_scaler = pickle.load(f)
         
-        
-    
-    for alpha, loss, dn, dr, reduce_type, optimizer, act,lat in product(alphas, losses, denoise, double_recon, reduce_types.items(), optimizers.items(), activation, lat_dims):
-        if lat==12 and (dn == True or act== "relu"):
-            continue 
-        elif act=="relu" and dn==True:
-            continue
-        
-        
-        reduce_name, reduce = reduce_type
-        opt_name, opt_dict = optimizer
-        # model_name = f"{scaler_type}_{reduce_name}_{alpha}_{'_'.join(loss)}_{opt_name}{'_denoising' if dn else ''}_2d_{lr}{'_double_recon' if dr else ''}"
-        model_name=f"{'denoising_' if dn else ''}autoencoder_{act}_{lat}{'_filtered_0.2' if filtered else ''}{'_D' if loss==['recon_dist_loss'] else ''}"
-        opt = tf.keras.optimizers.get(opt_dict)
-        print(model_name)
-        
-        ae_param = {"input_dim": 46,
-                    "latent_dim": lat,
-                    "latent_slices": 200,
-                    "window_size": 64,
-                    "step_size": 1,
-                    "batch_size": 2**7,
-                    "fc": None,
-                    "activation":act,
-                    "reduce": reduce,
-                    "alpha": alpha,
-                    "include_losses": loss,
-                    "opt": opt,
-                    # "scaler": None
-                    "scaler": tf_scaler,
-                    "num_neurons": [23],
-                    "denoise": dn,
-                    "shape":"circular",
-                    "double_recon": dr,
-                    "model_name":model_name
-                    }
+        if not os.path.exists("../plots"):
+            os.mkdir("../plots")
 
-        
-        eval_param["model_name"]=model_name
-        eval_param["model_type"]="tf"
-        print(f"training {model_name}")
-        train("FC", ae_param, ae_training_param)
-        
-        
-        for i in ae_training_param["save_epochs"]:
-            nids_db[f"{dataset}_{model_name}_{i}"]={
-                "abbrev":f"{'DAE' if dn else 'AE'}{'_R' if act=='relu' else ''}{'_25'if lat==25 else ''}{'F0.2' if filtered else ''}{'D' if loss==['recon_dist_loss'] else ''}-{i}",
-                "path":f"../models/{dataset}/{model_name}_{i}",
-                    "save_type": "tf",
-        "func_name": "call",
-        "dr_output_index": 0,
-        "ad_output_index": 1,
-        "dtype": "float32"}
-            
-        with open("configs/nids_models.json","w") as f:    
-            json.dump(nids_db, f, indent=4)
-        
+        count = 0
 
-            
+        feature_names = ["HT_MI_5_weight", "HT_MI_5_mean", "HT_MI_5_std", "HT_MI_3_weight", "HT_MI_3_mean", "HT_MI_3_std",
+                        "HT_MI_1_weight", "HT_MI_1_mean", "HT_MI_1_std", "HT_MI_0.1_weight",
+                        "HT_MI_0.1_mean", "HT_MI_0.1_std", "HT_MI_0.01_weight", "HT_MI_0.01_mean",
+                        "HT_MI_0.01_std", "HT_H_5_weight", "HT_H_5_mean", "HT_H_5_std", "HT_H_5_radius",
+                        "HT_H_5_magnitude", "HT_H_5_covariance", "HT_H_5_pcc", "HT_H_3_weight", "HT_H_3_mean",
+                        "HT_H_3_std", "HT_H_3_radius", "HT_H_3_magnitude", "HT_H_3_covariance", "HT_H_3_pcc",
+                        "HT_H_1_weight", "HT_H_1_mean", "HT_H_1_std", "HT_H_1_radius", "HT_H_1_magnitude", "HT_H_1_covariance",
+                        "HT_H_1_pcc", "HT_H_0.1_weight", "HT_H_0.1_mean", "HT_H_0.1_std", "HT_H_0.1_radius", "HT_H_0.1_magnitude",
+                        "HT_H_0.1_covariance", "HT_H_0.1_pcc", "HT_H_0.01_weight", "HT_H_0.01_mean", "HT_H_0.01_std",
+                        "HT_H_0.01_radius", "HT_H_0.01_magnitude", "HT_H_0.01_covariance", "HT_H_0.01_pcc", "HT_jit_5_weight",
+                        "HT_jit_5_mean", "HT_jit_5_std", "HT_jit_3_weight", "HT_jit_3_mean", "HT_jit_3_std", "HT_jit_1_weight",
+                        "HT_jit_1_mean", "HT_jit_1_std", "HT_jit_0.1_weight", "HT_jit_0.1_mean", "HT_jit_0.1_std", "HT_jit_0.01_weight",
+                        "HT_jit_0.01_mean", "HT_jit_0.01_std", "HT_Hp_5_weight", "HT_Hp_5_mean", "HT_Hp_5_std", "HT_Hp_5_radius",
+                        "HT_Hp_5_magnitude", "HT_Hp_5_covariance", "HT_Hp_5_pcc", "HT_Hp_3_weight", "HT_Hp_3_mean", "HT_Hp_3_std",
+                        "HT_Hp_3_radius", "HT_Hp_3_magnitude", "HT_Hp_3_covariance", "HT_Hp_3_pcc", "HT_Hp_1_weight", "HT_Hp_1_mean",
+                        "HT_Hp_1_std", "HT_Hp_1_radius", "HT_Hp_1_magnitude", "HT_Hp_1_covariance", "HT_Hp_1_pcc", "HT_Hp_0.1_weight",
+                        "HT_Hp_0.1_mean", "HT_Hp_0.1_std", "HT_Hp_0.1_radius", "HT_Hp_0.1_magnitude", "HT_Hp_0.1_covariance",
+                        "HT_Hp_0.1_pcc", "HT_Hp_0.01_weight", "HT_Hp_0.01_mean", "HT_Hp_0.01_std", "HT_Hp_0.01_radius",
+                        "HT_Hp_0.01_magnitude", "HT_Hp_0.01_covariance", "HT_Hp_0.01_pcc"]
+
+        feature_names = [i[:i.rindex("_")] for i in feature_names]
+
+        # model_name = "tsne"
+        # save_type="pkl"
+        # sk_train_param = {"path": "../../mtd_defence/datasets/uq/benign/Cam_1.csv",
+        #                   "frac": 0.1, "read_with": "pd", "scaler": sk_scaler,
+        #                   "batch_size": -1,
+        #                   }
+        # eval_param = {"model_type": save_type,
+        #               "model_name":model_name,
+        #               "feature_paths": {
+        #                   "Benign": ["../../mtd_defence/datasets/uq/benign/Cam_1.csv", "deep"],
+        #                   "ACK": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv", "matter"],
+        #                 #   "ACK_adv": ["../../mtd_defence/datasets/uq/adversarial/Cam_1/ACK_Flooding/autoencoder_0.5_10_3_False_pso0.5/csv/Cam_1_ACK_Flooding_iter_0.csv", "matter"],
+        #                 #   "SYN": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv", "matter"],
+        #                 #   "UDP": ["../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv", "matter"],
+        #               },
+        #               "scaler":None,
+        #               "frac": 0.05,
+        #               "feature_names":feature_names,
+        #               "plot_dist":False,
+        #               "resolution": (200, 200),
+        #              }
+        
+        # train(save_type, {"model_name":model_name, "config":{"n_components": 2, "perplexity":100,"n_jobs":8}}, sk_train_param)
         # visualise_latent_space(**eval_param)
+        
+
+        ae_training_param={"train_paths":[
+            #"../../mtd_defence/datasets/uq/benign/Cam_1.csv"
+            f"../data/{dataset}_train{'_filtered_0.2' if filtered else ''}.csv"
+            ],
+                "dataset":dataset,
+                "epochs":100,
+                "save_epochs":[1,20,40,60,80,100],
+                "batch_size":1024,
+                "shuffle":True, 
+                "continue_training":False,
+                "test_iter":100,
+                "test_paths": {
+                "ACK": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_ACK_Flooding.csv",
+                "SYN": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_SYN_Flooding.csv",
+                "UDP": "../../mtd_defence/datasets/uq/malicious/Cam_1/Cam_1_UDP_Flooding.csv"
+                
+                }
+            }
+
+        # fc = train_feature_cluster(ae_training_param["train_paths"][0], 2**10)
+
+        
+        
+        with open("configs/nids_models.json","r") as f:
+            nids_db=json.load(f)
+            
+        for dn, reduce_type, optimizer, act, lat in product( denoise, reduce_types.items(), optimizers.items(), activation, lat_dims):
+            reduce_name, reduce = reduce_type
+            opt_name, opt_dict = optimizer
+            # model_name = f"{scaler_type}_{reduce_name}_{alpha}_{'_'.join(loss)}_{opt_name}{'_denoising' if dn else ''}_2d_{lr}{'_double_recon' if dr else ''}"
+            model_name=f"{'denoising_' if dn else ''}autoencoder_{act}_{lat}{'_filtered_0.2' if filtered else ''}{'_D' if loss==['recon_dist_loss'] else ''}"
+            opt = tf.keras.optimizers.get(opt_dict)
+            print(model_name)
+
+            ae_param = {"input_dim": 100,
+                        "latent_dim": lat,
+                        "latent_slices": 200,
+                        "window_size": 64,
+                        "step_size": 1,
+                        "batch_size": 2**7,
+                        "fc": None,
+                        "activation":act,
+                        "reduce": reduce,
+                        "alpha": alpha,
+                        "include_losses": loss,
+                        "opt": opt,
+                        # "scaler": None
+                        "scaler": tf_scaler,
+                        "num_neurons": [50],
+                        "denoise": dn,
+                        "shape":"circular",
+                        "double_recon": False,
+                        "model_name":model_name
+                        }
+
+            
+            
+            print(f"training {model_name}")
+            train("FC", ae_param, ae_training_param)
+            
+            
+            for i in ae_training_param["save_epochs"]:
+                nids_db[f"{dataset}_{model_name}_{i}"]={
+                    "abbrev":f"{'DAE' if dn else 'AE'}{'_R' if act=='relu' else ''}{'_25'if lat==25 else ''}{'F0.2' if filtered else ''}{'D' if loss==['recon_dist_loss'] else ''}-{i}",
+                    "path":f"../models/{dataset}/{model_name}_{i}",
+                        "save_type": "tf",
+            "func_name": "call",
+            "dr_output_index": 0,
+            "ad_output_index": 1,
+            "dtype": "float32"}
+                
+            with open("configs/nids_models.json","w") as f:    
+                json.dump(nids_db, f, indent=4)
+            
+
+                
+            # visualise_latent_space(**eval_param)

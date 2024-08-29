@@ -1389,6 +1389,7 @@ def reservoir_sample(files, nids=None, n=1000, near_boundary=True, file_db=None)
             
             if near_boundary:
                 scores=nids.predict(data)
+                
                 lower_idx=np.where((nids.threshold*0.8<scores) & (scores<nids.threshold*1.2))
                 lower_data=data[lower_idx]
             else:

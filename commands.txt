@@ -1,0 +1,1 @@
+docker run --gpus all -it --rm -v "D:\mtd_defence":/workspace/mtd_defence -v "D:\NIDS-Vis":/workspace/nids-vis -v "D:\datasets":/workspace/datasets kihy/nids-vis bash

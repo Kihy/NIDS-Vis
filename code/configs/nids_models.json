@@ -1804,7 +1804,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.15253315269947043,
+            "99.9": 0.18860255658626557,
+            "99.99": 0.19424736721813668,
+            "100": 0.19663715362548828,
+            "lognorm_3_std": 0.20952601196726223,
+            "opt_t": 0.19419467449188232
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_filtered_0.2_20": {
         "abbrev": "AE_25F0.2-20",
@@ -1813,7 +1821,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.013518770411610603,
+            "99.9": 0.022164837103337068,
+            "99.99": 0.024350284717976428,
+            "100": 0.04535484313964844,
+            "lognorm_3_std": 0.031000629239888673,
+            "opt_t": 0.024474699050188065
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_filtered_0.2_40": {
         "abbrev": "AE_25F0.2-40",
@@ -1822,7 +1838,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0052492183167487305,
+            "99.9": 0.007776119005866378,
+            "99.99": 0.008895953902974714,
+            "100": 0.038932785391807556,
+            "lognorm_3_std": 0.010576465254542766,
+            "opt_t": 0.00896010547876358
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_filtered_0.2_60": {
         "abbrev": "AE_25F0.2-60",
@@ -1831,7 +1855,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.004545310046523808,
+            "99.9": 0.006595190814696264,
+            "99.99": 0.009417682236991364,
+            "100": 0.03895742818713188,
+            "lognorm_3_std": 0.009957855348161893,
+            "opt_t": 0.008644482120871544
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_filtered_0.2_80": {
         "abbrev": "AE_25F0.2-80",
@@ -1840,7 +1872,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.005047568259760734,
+            "99.9": 0.00735602204687895,
+            "99.99": 0.011160686176269738,
+            "100": 0.03908618912100792,
+            "lognorm_3_std": 0.011969676354946472,
+            "opt_t": 0.010237428359687328
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_filtered_0.2_100": {
         "abbrev": "AE_25F0.2-100",
@@ -1849,7 +1889,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.004969476349651813,
+            "99.9": 0.00730612991377713,
+            "99.99": 0.01118208818044462,
+            "100": 0.03963256999850273,
+            "lognorm_3_std": 0.011301896049042928,
+            "opt_t": 0.010392210446298122
+        }
     },
     "Smartphone_1_autoencoder_relu_2_filtered_0.2_1": {
         "abbrev": "AE_RF0.2-1",
@@ -2164,7 +2212,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.01486585000529885,
+            "99.9": 0.029968635160476015,
+            "99.99": 0.04060447009279734,
+            "100": 0.06525392830371857,
+            "lognorm_3_std": 0.011361908347762389,
+            "opt_t": 0.030494360253214836
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_D_20": {
         "abbrev": "AE_25D-20",
@@ -2173,7 +2229,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0033687152666971075,
+            "99.9": 0.005120932674035457,
+            "99.99": 0.007910646192728826,
+            "100": 0.024998150765895844,
+            "lognorm_3_std": 0.0032369623362566687,
+            "opt_t": 0.006720751989632845
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_D_40": {
         "abbrev": "AE_25D-40",
@@ -2182,7 +2246,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030019461410120112,
+            "99.9": 0.004244322855956861,
+            "99.99": 0.006258689073844102,
+            "100": 0.021610712632536888,
+            "lognorm_3_std": 0.0029741221150729425,
+            "opt_t": 0.00544360838830471
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_D_60": {
         "abbrev": "AE_25D-60",
@@ -2191,7 +2263,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030061027267947785,
+            "99.9": 0.0040091579314321365,
+            "99.99": 0.005836533838415243,
+            "100": 0.015647733584046364,
+            "lognorm_3_std": 0.0029991790833796736,
+            "opt_t": 0.005038878880441189
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_D_80": {
         "abbrev": "AE_25D-80",
@@ -2200,7 +2280,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030839911894872778,
+            "99.9": 0.004037144733592888,
+            "99.99": 0.005703105675056143,
+            "100": 0.013931240886449814,
+            "lognorm_3_std": 0.0030425004476416734,
+            "opt_t": 0.005120301153510809
+        }
     },
     "Smartphone_1_autoencoder_sigmoid_25_D_100": {
         "abbrev": "AE_25D-100",
@@ -2209,7 +2297,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.002946407091803845,
+            "99.9": 0.003926712563261392,
+            "99.99": 0.005565852479543399,
+            "100": 0.013911385089159012,
+            "lognorm_3_std": 0.0029054391936570684,
+            "opt_t": 0.0045639812014997005
+        }
     },
     "Smartphone_1_autoencoder_relu_2_D_1": {
         "abbrev": "AE_RD-1",
@@ -2524,7 +2620,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.005875693848356607,
+            "99.9": 0.012804599164053838,
+            "99.99": 0.021714784380793842,
+            "100": 0.04219215363264084,
+            "lognorm_3_std": 0.004674752570754574,
+            "opt_t": 0.014485063962638378
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_D_20": {
         "abbrev": "AE_25D-20",
@@ -2533,7 +2637,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0029467259766533978,
+            "99.9": 0.003917351537384099,
+            "99.99": 0.005738393358979481,
+            "100": 0.024090327322483063,
+            "lognorm_3_std": 0.002949356938947196,
+            "opt_t": 0.005744829308241606
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_D_40": {
         "abbrev": "AE_25D-40",
@@ -2542,7 +2654,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0027031567879021168,
+            "99.9": 0.0032796972407959537,
+            "99.99": 0.004661504892725536,
+            "100": 0.015074413269758224,
+            "lognorm_3_std": 0.002766028800939565,
+            "opt_t": 0.003934388980269432
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_D_60": {
         "abbrev": "AE_25D-60",
@@ -2551,7 +2671,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030239635007455953,
+            "99.9": 0.0036079134242609145,
+            "99.99": 0.004857820383180084,
+            "100": 0.016053510829806328,
+            "lognorm_3_std": 0.0029554626797260557,
+            "opt_t": 0.00466206856071949
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_D_80": {
         "abbrev": "AE_25D-80",
@@ -2560,7 +2688,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.002825318211689594,
+            "99.9": 0.003497156538534918,
+            "99.99": 0.004646476249397746,
+            "100": 0.015050039626657963,
+            "lognorm_3_std": 0.0027643341413969083,
+            "opt_t": 0.004501210059970617
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_D_100": {
         "abbrev": "AE_25D-100",
@@ -2569,7 +2705,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0029459755215793856,
+            "99.9": 0.003617148618679502,
+            "99.99": 0.004757929748576639,
+            "100": 0.015617523342370987,
+            "lognorm_3_std": 0.002815343875054418,
+            "opt_t": 0.004952276591211557
+        }
     },
     "Smart_Clock_1_autoencoder_relu_2_D_1": {
         "abbrev": "AE_RD-1",
@@ -3330,7 +3474,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.09968226209282882,
+            "99.9": 0.15383603763580345,
+            "99.99": 0.18755752399564393,
+            "100": 0.21341179311275482,
+            "lognorm_3_std": 0.11468288962994187,
+            "opt_t": 0.16423459351062775
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_filtered_0.2_20": {
         "abbrev": "AE_25F0.2-20",
@@ -3339,7 +3491,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.006771378507837676,
+            "99.9": 0.024028653450310335,
+            "99.99": 0.03961874118074929,
+            "100": 0.0545637421309948,
+            "lognorm_3_std": 0.0037082831916020608,
+            "opt_t": 0.028093671426177025
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_filtered_0.2_40": {
         "abbrev": "AE_25F0.2-40",
@@ -3348,7 +3508,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0022931929677724857,
+            "99.9": 0.007414229662157612,
+            "99.99": 0.014894866774417558,
+            "100": 0.032456785440444946,
+            "lognorm_3_std": 0.0010177930458796463,
+            "opt_t": 0.008745313622057438
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_filtered_0.2_60": {
         "abbrev": "AE_25F0.2-60",
@@ -3357,7 +3525,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0011427667131647505,
+            "99.9": 0.0041112963184714545,
+            "99.99": 0.009761675496213453,
+            "100": 0.018490593880414963,
+            "lognorm_3_std": 0.0008641486696432669,
+            "opt_t": 0.0057027144357562065
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_filtered_0.2_80": {
         "abbrev": "AE_25F0.2-80",
@@ -3366,7 +3542,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0008667024527676428,
+            "99.9": 0.0030853503220714643,
+            "99.99": 0.008846882973613739,
+            "100": 0.019739728420972824,
+            "lognorm_3_std": 0.0009052249866601102,
+            "opt_t": 0.004693377763032913
+        }
     },
     "Smart_Clock_1_autoencoder_sigmoid_25_filtered_0.2_100": {
         "abbrev": "AE_25F0.2-100",
@@ -3375,7 +3559,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.000802287610713398,
+            "99.9": 0.0025485510779544923,
+            "99.99": 0.008082990136186248,
+            "100": 0.015923362225294113,
+            "lognorm_3_std": 0.0006277621726213874,
+            "opt_t": 0.004702909383922815
+        }
     },
     "Smart_Clock_1_autoencoder_relu_2_filtered_0.2_1": {
         "abbrev": "AE_RF0.2-1",
@@ -3728,7 +3920,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.1828963354229927,
+            "99.9": 0.20176280987262718,
+            "99.99": 0.21047867456078329,
+            "100": 0.21279539167881012,
+            "lognorm_3_std": 0.3657099069643109,
+            "opt_t": 0.18535301089286804
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_filtered_0.2_20": {
         "abbrev": "AE_25F0.2-20",
@@ -3737,7 +3937,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.013863906133919936,
+            "99.9": 0.019303831469267507,
+            "99.99": 0.03080880825332303,
+            "100": 0.04535111039876938,
+            "lognorm_3_std": 0.012602180398100805,
+            "opt_t": 0.020086737349629402
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_filtered_0.2_40": {
         "abbrev": "AE_25F0.2-40",
@@ -3746,7 +3954,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0046049826685339084,
+            "99.9": 0.006285202280618235,
+            "99.99": 0.016824727246906743,
+            "100": 0.04228418320417404,
+            "lognorm_3_std": 0.0038175429978940523,
+            "opt_t": 0.007513353601098061
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_filtered_0.2_60": {
         "abbrev": "AE_25F0.2-60",
@@ -3755,7 +3971,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0037944755749776725,
+            "99.9": 0.005192042374052033,
+            "99.99": 0.012475383712346438,
+            "100": 0.041148532181978226,
+            "lognorm_3_std": 0.003055707483033139,
+            "opt_t": 0.006459659896790981
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_filtered_0.2_80": {
         "abbrev": "AE_25F0.2-80",
@@ -3764,7 +3988,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003554524676874277,
+            "99.9": 0.005064013916999012,
+            "99.99": 0.014697048425858585,
+            "100": 0.04049152880907059,
+            "lognorm_3_std": 0.01280975184494329,
+            "opt_t": 0.006405562628060579
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_filtered_0.2_100": {
         "abbrev": "AE_25F0.2-100",
@@ -3773,7 +4005,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003002488585188982,
+            "99.9": 0.004394319067709065,
+            "99.99": 0.011554558563226736,
+            "100": 0.044182680547237396,
+            "lognorm_3_std": 0.002479799510652982,
+            "opt_t": 0.005513425916433334
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_relu_2_filtered_0.2_1": {
         "abbrev": "AE_RF0.2-1",
@@ -4088,7 +4328,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.031631847992539375,
+            "99.9": 0.04726988876610984,
+            "99.99": 0.05640296377986567,
+            "100": 0.09157833456993103,
+            "lognorm_3_std": 0.04320164849499342,
+            "opt_t": 0.046532582491636276
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_D_20": {
         "abbrev": "AE_25D-20",
@@ -4097,7 +4345,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.00406490757130086,
+            "99.9": 0.006159600667655465,
+            "99.99": 0.010608222535811358,
+            "100": 0.0210471972823143,
+            "lognorm_3_std": 0.003967166688375391,
+            "opt_t": 0.005498469341546297
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_D_40": {
         "abbrev": "AE_25D-40",
@@ -4106,7 +4362,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003366620913147926,
+            "99.9": 0.004885020391084223,
+            "99.99": 0.007370124153976237,
+            "100": 0.013346913270652294,
+            "lognorm_3_std": 0.003267025058846309,
+            "opt_t": 0.0049747866578400135
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_D_60": {
         "abbrev": "AE_25D-60",
@@ -4115,7 +4379,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0032344952924176986,
+            "99.9": 0.0044744977457448695,
+            "99.99": 0.006764253561941519,
+            "100": 0.011885072104632854,
+            "lognorm_3_std": 0.0032881935942931204,
+            "opt_t": 0.004694062285125256
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_D_80": {
         "abbrev": "AE_25D-80",
@@ -4124,7 +4396,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003378251404501493,
+            "99.9": 0.004498507525771788,
+            "99.99": 0.006392517027066755,
+            "100": 0.011701185256242752,
+            "lognorm_3_std": 0.0033303453618790417,
+            "opt_t": 0.004675217438489199
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_sigmoid_25_D_100": {
         "abbrev": "AE_25D-100",
@@ -4133,7 +4413,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0032335166819393614,
+            "99.9": 0.004347640748135744,
+            "99.99": 0.006199801809618733,
+            "100": 0.01136324368417263,
+            "lognorm_3_std": 0.003203418428574655,
+            "opt_t": 0.004542593844234943
+        }
     },
     "Raspberry_Pi_telnet_autoencoder_relu_2_D_1": {
         "abbrev": "AE_RD-1",
@@ -4894,7 +5182,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.11104548841714854,
+            "99.9": 0.1359647594392301,
+            "99.99": 0.1493633518934565,
+            "100": 0.2339905947446823,
+            "lognorm_3_std": 0.0990125995864507,
+            "opt_t": 0.14794355630874634
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_filtered_0.2_20": {
         "abbrev": "AE_25F0.2-20",
@@ -4903,7 +5199,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.005292047765105957,
+            "99.9": 0.009994541641324843,
+            "99.99": 0.01903481254132159,
+            "100": 0.05956393852829933,
+            "lognorm_3_std": 0.003485348937060093,
+            "opt_t": 0.013846712186932564
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_filtered_0.2_40": {
         "abbrev": "AE_25F0.2-40",
@@ -4912,7 +5216,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0021463031088933314,
+            "99.9": 0.004755672847852234,
+            "99.99": 0.01122618921101342,
+            "100": 0.029811248183250427,
+            "lognorm_3_std": 0.0014873600082812004,
+            "opt_t": 0.007316707167774439
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_filtered_0.2_60": {
         "abbrev": "AE_25F0.2-60",
@@ -4921,7 +5233,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.001227524920832363,
+            "99.9": 0.0033151537473314154,
+            "99.99": 0.007598650013748789,
+            "100": 0.019519394263625145,
+            "lognorm_3_std": 0.0009340548007498589,
+            "opt_t": 0.005995296407490969
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_filtered_0.2_80": {
         "abbrev": "AE_25F0.2-80",
@@ -4930,7 +5250,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0009158033726271191,
+            "99.9": 0.0026958948252722957,
+            "99.99": 0.006216647182592673,
+            "100": 0.015279975719749928,
+            "lognorm_3_std": 0.0007422231250627789,
+            "opt_t": 0.0039981757290661335
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_filtered_0.2_100": {
         "abbrev": "AE_25F0.2-100",
@@ -4939,7 +5267,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0007783973717596378,
+            "99.9": 0.0023126582489348957,
+            "99.99": 0.005367308441363342,
+            "100": 0.015060259960591793,
+            "lognorm_3_std": 0.0006507920041123605,
+            "opt_t": 0.0036978593561798334
+        }
     },
     "Google-Nest-Mini_1_autoencoder_relu_2_filtered_0.2_1": {
         "abbrev": "AE_RF0.2-1",
@@ -5254,7 +5590,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.007970817312598192,
+            "99.9": 0.017187599014491007,
+            "99.99": 0.026407779056961643,
+            "100": 0.04445652663707733,
+            "lognorm_3_std": 0.005337109162200208,
+            "opt_t": 0.024039320647716522
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_D_20": {
         "abbrev": "AE_25D-20",
@@ -5263,7 +5607,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030539139779284592,
+            "99.9": 0.003726025765761741,
+            "99.99": 0.005490126479696567,
+            "100": 0.016947122290730476,
+            "lognorm_3_std": 0.002940969077979499,
+            "opt_t": 0.0062381429597735405
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_D_40": {
         "abbrev": "AE_25D-40",
@@ -5272,7 +5624,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.00298505519516766,
+            "99.9": 0.0038010397320613377,
+            "99.99": 0.005125941261369891,
+            "100": 0.01598936691880226,
+            "lognorm_3_std": 0.002815832168717773,
+            "opt_t": 0.005902111530303955
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_D_60": {
         "abbrev": "AE_25D-60",
@@ -5281,7 +5641,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0029227727884426702,
+            "99.9": 0.003659278200473637,
+            "99.99": 0.004903957698587848,
+            "100": 0.01490541361272335,
+            "lognorm_3_std": 0.0028628039744339343,
+            "opt_t": 0.005808920133858919
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_D_80": {
         "abbrev": "AE_25D-80",
@@ -5290,7 +5658,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.002810909943655132,
+            "99.9": 0.0037579238545149603,
+            "99.99": 0.005009674878978083,
+            "100": 0.013890540227293968,
+            "lognorm_3_std": 0.0027499239847359235,
+            "opt_t": 0.005385489668697119
+        }
     },
     "Google-Nest-Mini_1_autoencoder_sigmoid_25_D_100": {
         "abbrev": "AE_25D-100",
@@ -5299,7 +5675,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003061004593037065,
+            "99.9": 0.003764762521255766,
+            "99.99": 0.004944980511535338,
+            "100": 0.011625663377344608,
+            "lognorm_3_std": 0.0028508352612221883,
+            "opt_t": 0.005349704995751381
+        }
     },
     "Google-Nest-Mini_1_autoencoder_relu_2_D_1": {
         "abbrev": "AE_RD-1",
@@ -6060,7 +6444,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.11407583594322201,
+            "99.9": 0.15932738304138166,
+            "99.99": 0.19516431301534834,
+            "100": 0.2077813297510147,
+            "lognorm_3_std": 0.14108842917956743,
+            "opt_t": 0.20284394919872284
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_filtered_0.2_20": {
         "abbrev": "AE_25F0.2-20",
@@ -6069,7 +6461,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.024762728735804443,
+            "99.9": 0.05565933108329772,
+            "99.99": 0.08075494922250993,
+            "100": 0.09068435430526733,
+            "lognorm_3_std": 0.04940296985478287,
+            "opt_t": 0.06530354171991348
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_filtered_0.2_40": {
         "abbrev": "AE_25F0.2-40",
@@ -6078,7 +6478,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.008096084091812356,
+            "99.9": 0.025867277834564432,
+            "99.99": 0.04326070612818132,
+            "100": 0.05701615288853645,
+            "lognorm_3_std": 0.011778906961965057,
+            "opt_t": 0.030747974291443825
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_filtered_0.2_60": {
         "abbrev": "AE_25F0.2-60",
@@ -6087,7 +6495,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.004461999153718347,
+            "99.9": 0.012919027758762152,
+            "99.99": 0.023129955733940156,
+            "100": 0.05113833397626877,
+            "lognorm_3_std": 0.00731347906841639,
+            "opt_t": 0.01794384978711605
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_filtered_0.2_80": {
         "abbrev": "AE_25F0.2-80",
@@ -6096,7 +6512,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030121747776865925,
+            "99.9": 0.00907601994276043,
+            "99.99": 0.016507931538299946,
+            "100": 0.046622805297374725,
+            "lognorm_3_std": 0.002624997628479302,
+            "opt_t": 0.011606527492403984
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_filtered_0.2_100": {
         "abbrev": "AE_25F0.2-100",
@@ -6105,7 +6529,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0022333173267543313,
+            "99.9": 0.0064621873851864855,
+            "99.99": 0.012491601918638698,
+            "100": 0.04453195631504059,
+            "lognorm_3_std": 0.003939081750491607,
+            "opt_t": 0.009054782800376415
+        }
     },
     "SmartTV_autoencoder_relu_2_filtered_0.2_1": {
         "abbrev": "AE_RF0.2-1",
@@ -6420,7 +6852,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.01722256615757939,
+            "99.9": 0.040766628056764405,
+            "99.99": 0.051871335452050644,
+            "100": 0.07420727610588074,
+            "lognorm_3_std": 0.028703943979961646,
+            "opt_t": 0.051347699016332626
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_D_20": {
         "abbrev": "AE_25D-20",
@@ -6429,7 +6869,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0033221518434584114,
+            "99.9": 0.004854256437160074,
+            "99.99": 0.0072612906076950845,
+            "100": 0.01844521425664425,
+            "lognorm_3_std": 0.003274530481987108,
+            "opt_t": 0.006729455199092627
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_D_40": {
         "abbrev": "AE_25D-40",
@@ -6438,7 +6886,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.002893020687624811,
+            "99.9": 0.00392450312059372,
+            "99.99": 0.005575258215424137,
+            "100": 0.014038855209946632,
+            "lognorm_3_std": 0.0029521445002424654,
+            "opt_t": 0.004915071651339531
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_D_60": {
         "abbrev": "AE_25D-60",
@@ -6447,7 +6903,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030833023833110925,
+            "99.9": 0.003978217879310248,
+            "99.99": 0.005509161042422141,
+            "100": 0.013952677138149738,
+            "lognorm_3_std": 0.0030502263547817266,
+            "opt_t": 0.005060104187577963
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_D_80": {
         "abbrev": "AE_25D-80",
@@ -6456,7 +6920,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030340865161269867,
+            "99.9": 0.003815808503888545,
+            "99.99": 0.005132344989571886,
+            "100": 0.011586461216211319,
+            "lognorm_3_std": 0.002985692809907692,
+            "opt_t": 0.004840213339775801
+        }
     },
     "SmartTV_autoencoder_sigmoid_25_D_100": {
         "abbrev": "AE_25D-100",
@@ -6465,7 +6937,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0028114215750247237,
+            "99.9": 0.0034700464913621537,
+            "99.99": 0.004717891422845488,
+            "100": 0.011446740478277206,
+            "lognorm_3_std": 0.0029014167242971275,
+            "opt_t": 0.004450599662959576
+        }
     },
     "SmartTV_autoencoder_relu_2_D_1": {
         "abbrev": "AE_RD-1",
@@ -7226,7 +7706,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.33716151118278503,
+            "99.9": 0.41057005739213215,
+            "99.99": 0.5799173557996731,
+            "100": 0.6019346117973328,
+            "lognorm_3_std": 0.42046317018371226,
+            "opt_t": 0.3432464599609375
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_filtered_0.2_20": {
         "abbrev": "AE_25F0.2-20",
@@ -7235,7 +7723,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.053982067853212336,
+            "99.9": 0.1322580512464055,
+            "99.99": 0.22637434530556041,
+            "100": 0.2380799800157547,
+            "lognorm_3_std": 0.0753218313024975,
+            "opt_t": 0.06633905321359634
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_filtered_0.2_40": {
         "abbrev": "AE_25F0.2-40",
@@ -7244,7 +7740,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.04710955142974843,
+            "99.9": 0.12488069829345057,
+            "99.99": 0.21282006959915056,
+            "100": 0.22420425713062286,
+            "lognorm_3_std": 0.07006981899532091,
+            "opt_t": 0.061496801674366
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_filtered_0.2_60": {
         "abbrev": "AE_25F0.2-60",
@@ -7253,7 +7757,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.04220319032669045,
+            "99.9": 0.11289672441781366,
+            "99.99": 0.19252899707257676,
+            "100": 0.20321246981620789,
+            "lognorm_3_std": 0.06956217120420377,
+            "opt_t": 0.05662448704242706
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_filtered_0.2_80": {
         "abbrev": "AE_25F0.2-80",
@@ -7262,7 +7774,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.037987136840820314,
+            "99.9": 0.09970174579323075,
+            "99.99": 0.17601335093080928,
+            "100": 0.18608616292476654,
+            "lognorm_3_std": 0.06760009571790204,
+            "opt_t": 0.05602201446890831
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_filtered_0.2_100": {
         "abbrev": "AE_25F0.2-100",
@@ -7271,7 +7791,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.03416725158691406,
+            "99.9": 0.0896160548627449,
+            "99.99": 0.16259867435693637,
+            "100": 0.1723029464483261,
+            "lognorm_3_std": 0.06229970640434468,
+            "opt_t": 0.053769759833812714
+        }
     },
     "Lenovo_Bulb_1_autoencoder_relu_2_filtered_0.2_1": {
         "abbrev": "AE_RF0.2-1",
@@ -7586,7 +8114,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.1394071963429449,
+            "99.9": 0.1861126991808422,
+            "99.99": 0.33929240461587723,
+            "100": 0.3499279022216797,
+            "lognorm_3_std": 0.14619846846967208,
+            "opt_t": 0.15630553662776947
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_D_20": {
         "abbrev": "AE_25D-20",
@@ -7595,7 +8131,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.03768433511257152,
+            "99.9": 0.0823874801993377,
+            "99.99": 0.2145457367658607,
+            "100": 0.2245621681213379,
+            "lognorm_3_std": 0.04797882106075317,
+            "opt_t": 0.057489532977342606
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_D_40": {
         "abbrev": "AE_25D-40",
@@ -7604,7 +8148,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.026087058410048446,
+            "99.9": 0.06205501166731416,
+            "99.99": 0.16664463523924275,
+            "100": 0.17476150393486023,
+            "lognorm_3_std": 0.02052284382272295,
+            "opt_t": 0.05105568841099739
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_D_60": {
         "abbrev": "AE_25D-60",
@@ -7613,7 +8165,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.019795530810952065,
+            "99.9": 0.044244718618691295,
+            "99.99": 0.11698531208932343,
+            "100": 0.12388618290424347,
+            "lognorm_3_std": 0.01373444125841402,
+            "opt_t": 0.042349673807621
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_D_80": {
         "abbrev": "AE_25D-80",
@@ -7622,7 +8182,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.01754762254655361,
+            "99.9": 0.035998793020844834,
+            "99.99": 0.08730166771560856,
+            "100": 0.09306921809911728,
+            "lognorm_3_std": 0.011380033424875048,
+            "opt_t": 0.04069266840815544
+        }
     },
     "Lenovo_Bulb_1_autoencoder_sigmoid_25_D_100": {
         "abbrev": "AE_25D-100",
@@ -7631,7 +8199,15 @@
         "func_name": "call",
         "dr_output_index": 0,
         "ad_output_index": 1,
-        "dtype": "float32"
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.016039294302463522,
+            "99.9": 0.03164237530529509,
+            "99.99": 0.06899570930451102,
+            "100": 0.07390955835580826,
+            "lognorm_3_std": 0.010127406740692842,
+            "opt_t": 0.035517074167728424
+        }
     },
     "Lenovo_Bulb_1_autoencoder_relu_2_D_1": {
         "abbrev": "AE_RD-1",
@@ -9573,6 +10149,264 @@
             "100": 1.0631122589111328,
             "lognorm_3_std": 0.003955836005313002,
             "opt_t": 0.0011174712562933564
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_D_1": {
+        "abbrev": "AE_25F0.2D-1",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_D_1",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32"
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_D_20": {
+        "abbrev": "AE_25F0.2D-20",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_D_20",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32"
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_D_40": {
+        "abbrev": "AE_25F0.2D-40",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_D_40",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32"
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_D_60": {
+        "abbrev": "AE_25F0.2D-60",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_D_60",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32"
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_D_80": {
+        "abbrev": "AE_25F0.2D-80",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_D_80",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32"
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_D_100": {
+        "abbrev": "AE_25F0.2D-100",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_D_100",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32"
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_1": {
+        "abbrev": "AE_25F0.2-1",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_1",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.08359592452645302,
+            "99.9": 0.12447705262899417,
+            "99.99": 0.13941884169280563,
+            "100": 0.16033436357975006,
+            "lognorm_3_std": 0.12074157508735503,
+            "opt_t": 0.14081265032291412
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_20": {
+        "abbrev": "AE_25F0.2-20",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_20",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.014175327476114049,
+            "99.9": 0.026237955030053915,
+            "99.99": 0.034135910429060494,
+            "100": 0.04433726146817207,
+            "lognorm_3_std": 0.012772918930218084,
+            "opt_t": 0.03356222063302994
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_40": {
+        "abbrev": "AE_25F0.2-40",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_40",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.006610720679163934,
+            "99.9": 0.01236673417873681,
+            "99.99": 0.019154315624386388,
+            "100": 0.032731082290410995,
+            "lognorm_3_std": 0.005680164589074291,
+            "opt_t": 0.016189387068152428
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_60": {
+        "abbrev": "AE_25F0.2-60",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_60",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.004550909297540788,
+            "99.9": 0.00962459992058618,
+            "99.99": 0.016858667732402716,
+            "100": 0.028998559340834618,
+            "lognorm_3_std": 0.013436500789241008,
+            "opt_t": 0.013490519486367702
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_80": {
+        "abbrev": "AE_25F0.2-80",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_80",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003236446292139592,
+            "99.9": 0.008186222508549695,
+            "99.99": 0.01348481192402568,
+            "100": 0.020815296098589897,
+            "lognorm_3_std": 0.008683345950695342,
+            "opt_t": 0.011890394613146782
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_filtered_0.2_100": {
+        "abbrev": "AE_25F0.2-100",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_filtered_0.2_100",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.00279305442236364,
+            "99.9": 0.006948775194585371,
+            "99.99": 0.011707905082777153,
+            "100": 0.01730361394584179,
+            "lognorm_3_std": 0.005917297587041555,
+            "opt_t": 0.0102302897721529
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_D_1": {
+        "abbrev": "AE_25D-1",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_D_1",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.03355952195823194,
+            "99.9": 0.05260729394853139,
+            "99.99": 0.06976569404751187,
+            "100": 0.08813469111919403,
+            "lognorm_3_std": 0.038128370450539566,
+            "opt_t": 0.06668278574943542
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_D_20": {
+        "abbrev": "AE_25D-20",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_D_20",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.00392076381482184,
+            "99.9": 0.006682835501618713,
+            "99.99": 0.012049043509364202,
+            "100": 0.018931560218334198,
+            "lognorm_3_std": 0.003647822938967861,
+            "opt_t": 0.008709527552127838
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_D_40": {
+        "abbrev": "AE_25D-40",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_D_40",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003259132863022388,
+            "99.9": 0.0049811949552968394,
+            "99.99": 0.00862522175051275,
+            "100": 0.015138881281018257,
+            "lognorm_3_std": 0.0031725464398473686,
+            "opt_t": 0.006828459911048412
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_D_60": {
+        "abbrev": "AE_25D-60",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_D_60",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.003087736801244319,
+            "99.9": 0.004468469049781607,
+            "99.99": 0.0075980962850155445,
+            "100": 0.01307087391614914,
+            "lognorm_3_std": 0.0030254289424130366,
+            "opt_t": 0.006770041771233082
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_D_80": {
+        "abbrev": "AE_25D-80",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_D_80",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0030074091628193864,
+            "99.9": 0.00420407408475876,
+            "99.99": 0.007185044335015161,
+            "100": 0.013386341743171215,
+            "lognorm_3_std": 0.0029978267208752053,
+            "opt_t": 0.006914626806974411
+        }
+    },
+    "Cam_1_autoencoder_sigmoid_25_D_100": {
+        "abbrev": "AE_25D-100",
+        "path": "../models/Cam_1/autoencoder_sigmoid_25_D_100",
+        "save_type": "tf",
+        "func_name": "call",
+        "dr_output_index": 0,
+        "ad_output_index": 1,
+        "dtype": "float32",
+        "thresholds": {
+            "99.0": 0.0032029393548145893,
+            "99.9": 0.004180802948772909,
+            "99.99": 0.006784330652188622,
+            "100": 0.013341588899493217,
+            "lognorm_3_std": 0.00316415776727265,
+            "opt_t": 0.0060986424796283245
         }
     }
 }

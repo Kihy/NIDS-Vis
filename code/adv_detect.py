@@ -14,6 +14,7 @@ import itertools
 import scienceplots
 plt.style.use('science')
 import matplotlib
+import sklearn 
 matplotlib.rcParams['axes.formatter.useoffset'] = False
 matplotlib.rcParams.update({'font.size': 10})
 def train_nids(file, model_param, save_epoch=[1]):
@@ -93,7 +94,7 @@ def eval_nids(dataset, files, labels, nids_model, plot=False, full_data=True, sc
             else:
                 frac=1
                 total_rows=int(file["frac"]*file["total_rows"])
-            traffic_ds = get_dataset(file["path"], 1024, ndim=46,
+            traffic_ds = get_dataset(file["path"], 1024, ndim=100,
                                     scaler=None, frac=frac,total_rows=total_rows, read_with="tf", dtype="float32",
                                     skip_header=True, shuffle=False, drop_reminder=False)
             
@@ -502,314 +503,344 @@ if __name__ == "__main__":
     parser.add_argument('--command', dest='command',
                         help='specify which command to run')
     args = parser.parse_args()
+
     
-    dataset="Smartphone_1"
-    scaler_path = f"../../mtd_defence/models/uq/autoencoder/{dataset}_scaler.pkl"
-    with open(scaler_path, "rb") as f:
-        scaler = pickle.load(f)
         
-    if not os.path.exists(f"exp_csv/adv_detect/{dataset}"):
-        os.mkdir(f"exp_csv/adv_detect/{dataset}")
-    feature_range = (scaler.data_max_ - scaler.data_min_)
-    
-    #"ACK-LM-0.1-10","ACK-LM-0.5-10","ACK-fgsm","ACK-deep-fool"  "ACK","SYN","UDP","PS","SD"
-    files=[f"{dataset}",f"{dataset}_ACK",f"{dataset}_UDP",f"{dataset}_SYN",f"{dataset}_PS",f"{dataset}_SD"]
-    # files=[f"{dataset}",f"{dataset}_ATK"]
-    files=get_files(files)
+    devices=["Cam_1", "Google-Nest-Mini_1","Lenovo_Bulb_1", "Raspberry_Pi_telnet", "Smart_Clock_1","Smartphone_1","SmartTV"]
 
-
-    ae=["denoising_autoencoder_sigmoid_2_filtered_0.2","autoencoder_relu_2_filtered_0.2" ,"autoencoder_sigmoid_2_filtered_0.2", "kitsune_filtered_0.2",
-        "autoencoder_relu_2" ,"autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2",
-        "autoencoder_sigmoid_25","kitsune",
-        "denoising_autoencoder_sigmoid_2_D","autoencoder_relu_2_D" ,"autoencoder_sigmoid_2_D",
-        # "autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2","autoencoder_sigmoid_25"
-        # "kitsune"
-        ]
-
-    # ae=["kitsune","autoencoder_relu_2","autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2"]
-    # latent=[25,10,2 ] #10,2 "1","20","40","60","80","100"
-    epochs=["1","20","40","60","80","100"]
-    norms=[1,2,np.inf]
-    
-    if args.command=="adv_exp":
-        
-        nt=[False]
-        
-        test_mode=False
-        # file_idx=0
-        # target_idx=[133445]
-        # file_names=[files[file_idx]["abbrev"]]
-        # start_samples = pd.read_csv(files[file_idx]["path"], usecols=list(range(100)), skiprows = lambda x: x-1 not in target_idx,header=None).to_numpy()
-        
-        for near_threshold in nt:
-            if not test_mode and not near_threshold:
-                target_idx, start_samples, file_names=reservoir_sample(files, n=2000, near_boundary=near_threshold)
-                
-            for name,  epoch in itertools.product(ae, epochs):
-                # idx, benign_directions=sample_n_from_csv(**files[0], n=400)
-                if name.startswith("kitsune") and epoch != "1":
-                    continue
-                model_name=f"{dataset}_{name}_{epoch}"
-                print(model_name)
-                nids_model=get_nids_model(model_name, threshold_key="opt_t")
-                
-                if not test_mode and near_threshold:
-                    target_idx, start_samples, file_names=reservoir_sample(files, nids=nids_model, n=2000, near_boundary=near_threshold)
-                    
-                # continue
-                # if near_threshold:
-                #     eps=0.34349777798961395
-                # else:
-                #     eps=1.8395914625818583
-                eps=0.34349777798961395
-                
-                csv_f = open(f"exp_csv/adv_detect/{dataset}/{nids_model.name}_{'near_threshold' if near_threshold else 'sample'}_random_dir_0.3.csv", "w")
-                metrics=["file","eps","p","idx","score","label", "max_flips","flip_prob","adv_area","adv_prob","mean_turn","max_turn"]
-                csv_f.write(",".join(metrics))
-                csv_f.write("\n")
-                
-                if test_mode:
-                    write_to_file =False 
-                else:
-                    write_to_file=csv_f
-                for p in norms:
-                    adv_detect_exp(nids_model,target_idx, start_samples,file_names, feature_range, eps, p, write_to_file,
-                                benign_dir=None)
-    
-    elif args.command=="plot_res":
-        all_results=True
-        near_threshold=False
-        # eval results
-        if all_results:
-            df_auc=pd.read_csv(f"exp_csv/all_data/performance.csv")
-            near_threshold_rob=pd.read_csv(f"exp_csv/all_data/rob-True.csv")
-            all_rob=pd.read_csv(f"exp_csv/all_data/rob-False.csv")
+    for dataset in devices:
+        scaler_path = f"../../mtd_defence/models/uq/autoencoder/{dataset}_scaler.pkl"
+        with open(scaler_path, "rb") as f:
+            scaler = pickle.load(f)
             
-            adv_summary=pd.concat([near_threshold_rob.assign(loc='Near'),all_rob.assign(loc='All')])
-            adv_summary=adv_summary.set_index(["epoch","NIDS","filtered","new_loss","p","loc"])
-            dataset=f"all"
-        else:
-            df_auc=pd.read_csv(f"exp_csv/performance/{dataset}_eval_results.csv")
-            
-            results=[]
-            common={}
-            for name, epoch in itertools.product(ae, epochs):
-                if name.startswith("kitsune") and epoch !="1":
-                    continue
-            # for name, epoch in zip(ae, best_epochs):
-                model_name=f"{dataset}_{name}_{epoch}"
-                nids_model=get_nids_model(model_name, threshold_key="opt_t", load=False)
-                result=pd.read_csv(f"exp_csv/adv_detect/{dataset}/{dataset}_{name}_{epoch}_{'near_threshold' if near_threshold else 'sample'}_random_dir_0.3.csv")  
-                result["nids"]=nids_model["abbrev"]
-                result["threshold"]=nids_model["threshold"]
-                result["MELO"]=np.maximum(result["max_flips"] - result["label"] - 1, 0)
-                result["vul"]=np.where(result["MELO"]>0, True, False)
-                results.append(result)
-                if name.startswith("autoencoder_relu"):
-                    vul_points=result[result["vul"]]
-                    if epoch not in common.keys():
-                        common[epoch]=set(zip(vul_points["file"], vul_points["idx"], vul_points["p"]))
-                    else:
-                        common[epoch]=common[epoch].intersection(set(zip(vul_points["file"], vul_points["idx"], vul_points["p"])))
-            # for i,j in common.items():
-            #     print(i, j)
-            df=pd.concat(results)
-            
-            df[["NIDS","epoch"]]=df["nids"].str.rsplit("-", n=1, expand=True)
-            df["filtered"]=df["NIDS"].str.endswith("F0.2")
-            df["new_loss"]=df["NIDS"].str.endswith("D")
-            df["NIDS"].replace({"F0.2":"", "D$":""},inplace=True, regex=True)
-            
-            df["benign"]=np.where(df["file"]=="Cam_1",True, False)
-            df["epoch"]=df["epoch"].astype("int64")
-            df["p"]=df["p"].astype(str)
-            df.drop("file", axis=1, inplace=True)
-            
-            tmp=[df]
-            for e in [20,40,60,80,100]:
-                tmp.append(df[df["NIDS"]=="Kit"].assign(epoch=e))
-            df=pd.concat(tmp, ignore_index=True)
-            
-            adv_summary=df.groupby(["epoch","NIDS","filtered","new_loss","p"]).agg({"max_turn":"mean","MELO":"mean","mean_turn":"mean", "vul":"sum", "adv_prob":"mean"})
-            adv_summary=adv_summary.join(df.groupby(["epoch","NIDS","filtered","new_loss","p"]).size().to_frame(name="counts"))
-            adv_summary.rename({"max_turn":"MLE"},axis=1,inplace=True)
-            adv_summary.rename(index={"1.0":"1","2.0":"2","inf":"inf"},inplace=True)
-            # adv_summary["rob_count"]=adv_summary["counts"]*(1-adv_summary["robust"])
-            
-        df_auc.rename(columns={"nids":"NIDS"}, inplace=True)
-        df_auc["filtered"]=df_auc["NIDS"].str.endswith("F0.2")
-        df_auc["new_loss"]=df_auc["NIDS"].str.endswith("D")
-        df_auc["NIDS"].replace({"F0.2":"", "D$":""},inplace=True, regex=True)
+        if not os.path.exists(f"exp_csv/adv_detect/{dataset}"):
+            os.mkdir(f"exp_csv/adv_detect/{dataset}")
+        feature_range = (scaler.data_max_ - scaler.data_min_)
         
-
-        df_auc=df_auc.set_index(["NIDS","epoch","filtered","new_loss"])
-        # print(df_auc.to_csv())
-        # df_auc=df_auc.reset_index()
-        
-        
-        df_auc_melted=pd.melt(df_auc.query("(filtered==False) & (new_loss==False)"), value_vars=["PR-AUC","opt_f1"],ignore_index=False)
-        fig=sns.relplot(data=df_auc_melted, x="epoch", y="value", hue="NIDS", hue_order=["AE","AE_R","DAE","AE_25","Kit"], kind="line", col="variable",height=2, aspect=1, facet_kws={"sharey":'none'}, errorbar=None)
-        sns.move_legend(fig, loc="lower center", ncol = 5, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
-
-        fig.set_xlabels("Epoch")
-        fig.axes[0,0].set_title("Average Precision")
-        fig.axes[0,1].set_title("Optimal F1")
-        fig.set_ylabels("")
-        fig.tight_layout()
-        fig.savefig(f"exp_figs/meta_plots/{dataset}_performance.pdf")
-
-
-        filtered_df=df_auc.query("(NIDS in ['AE_R','AE','DAE','Kit']) & (new_loss==False)").droplevel("new_loss").drop(columns="dataset")
-        filtered_df=filtered_df.query("filtered==True").droplevel("filtered").subtract(filtered_df.query("(filtered==False)").droplevel("filtered"))
-        
-        new_loss_df=df_auc.query("(NIDS in ['AE_R','AE','DAE']) & (filtered==False)").droplevel("filtered").drop(columns="dataset")
-        new_loss_df=new_loss_df.query("new_loss==True").droplevel("new_loss").subtract(new_loss_df.query("(new_loss==False)").droplevel("new_loss"))
-
-        comp_df=pd.concat([new_loss_df.assign(method='DLF'),filtered_df.assign(method='FSP')])
-
-        comp_df=comp_df.set_index(["method"], append=True)
-        df_auc_melted=pd.melt(comp_df, value_vars=["PR-AUC","opt_f1"],ignore_index=False)
-        df_auc_melted=df_auc_melted.reset_index()
-        df_auc_melted["col_var"]=df_auc_melted["variable"]+" "+df_auc_melted["method"]
-        fig=sns.relplot(data=df_auc_melted, x="epoch", y="value", hue="NIDS",kind="line", col="variable", row="method",
-                        height=1.5, aspect=1.3, errorbar=None,facet_kws={"sharey":'row'})
-        fig.set_xlabels("Epoch")
-        fig.set_ylabels("")
-        for (row_key, col_key),ax in fig.axes_dict.items():
-            if col_key=="PR-AUC":
-                col_key=r"$\delta$AP"
-            else:
-                col_key=r"$\delta$OF1"
-            ax.set_title(f"{row_key} {col_key}")
-        for ax in fig.axes.flat:
-            ax.axhline(y=0, color='black', linestyle='--')
-        sns.move_legend(fig, loc="lower center", ncol = 4, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
-        
-        
-        fig.tight_layout()
-        fig.savefig(f"exp_figs/meta_plots/{dataset}_performance_comp.pdf")
-       
-        #"row":"filtered", "col":"new_loss"
-        plot_kwargs={"x":"epoch","y":"MLE", "row":"loc", "hue":"NIDS", "col":"p","height":1.2,
-                     "aspect":1, "errorbar":None,  "facet_kws":{"sharey":"row"}}
-        
-        
-        adv_detect_melt=adv_summary.query("(filtered==False) & (new_loss==False)")
-        fig=sns.relplot(data=adv_detect_melt, kind="line", hue_order=["AE","AE_R","DAE","AE_25","Kit"], **plot_kwargs)
-        fig.set_xlabels("Epoch")
-        fig.set_ylabels("")
-        sns.move_legend(fig, loc="lower center", ncol = 5, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
-                
-        for i, row_name in enumerate(["Near","All"]):
-            for j, col_name in enumerate([r"$l_1$",r"$l_2$",r"$l_\infty$"]):
-            
-                fig.axes[i,j].set_title(f"{col_name} {row_name}")
-            
-            
-        fig.tight_layout()
-        fig.savefig(f"exp_figs/adv_detect/{dataset}_{'near_threshold' if near_threshold else 'sample'}.pdf")
-        
-        
-        near_threshold_rob=near_threshold_rob.set_index(["epoch","NIDS","filtered","new_loss","p"])
-        filtered_df=near_threshold_rob.query("(NIDS in ['AE_R','AE','DAE','Kit']) & (new_loss==False)").droplevel("new_loss").drop(columns="dataset")
-        filtered_df=filtered_df.query("filtered==True").droplevel("filtered").subtract(filtered_df.query("(filtered==False)").droplevel("filtered"))
-        
-        new_loss_df=near_threshold_rob.query("(NIDS in ['AE_R','AE','DAE']) & (filtered==False)").droplevel("filtered").drop(columns="dataset")
-        new_loss_df=new_loss_df.query("new_loss==True").droplevel("new_loss").subtract(new_loss_df.query("(new_loss==False)").droplevel("new_loss"))
-
-        comp_df=pd.concat([new_loss_df.assign(method='DLF'),filtered_df.assign(method='FSP')])
-        
-        fig=sns.relplot(data=comp_df, x="epoch", y="MLE", hue="NIDS",kind="line", col="p", row="method",
-                        height=1.5, aspect=1, errorbar=None,facet_kws={"sharey":'row'})
-        
-        fig.set_ylabels("")
-        sns.move_legend(fig, loc="lower center", ncol = 5, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
-        for (row_key, col_key),ax in fig.axes_dict.items():
-            if col_key==1:
-                col_key=r"$l_1$"
-            elif col_key==2:
-                col_key=r"$l_2$"
-            else:
-                col_key=r"$l_\infty$"
-            ax.set_title(f"{row_key} {col_key} $\delta$MLE")
-        for ax in fig.axes.flat:
-            ax.axhline(y=0, color='black', linestyle='--')
-        fig.tight_layout()
-        fig.savefig(f"exp_figs/adv_detect/{dataset}_rob_comp.pdf")
-        
-        
-        
-
-    elif args.command=="train_nids":
-        
-        training_datasets=[False, True]
-        if not os.path.exists(f"../models/{dataset}/"):
-            os.mkdir(f"../models/{dataset}/")
-        save_epoch=[1]
-        
-        with open("configs/nids_models.json","r") as f:
-            nids_db=json.load(f)
-
-        for filtered in training_datasets: 
-            files=[f"{dataset}_train{'_filtered_0.2' if filtered else ''}"]
-            files=get_files(files)
-            model_name=f"kitsune{'_filtered_0.2' if filtered else ''}"
-            model_param_temp={
-                        "abbrev":f"Kit{'F0.2' if filtered else ''}",
-                        "path": f"../models/{dataset}/{model_name}",		            
-                        "func_name": "process",
-                        "scaler": None,
-                        "input_dim":46,
-                        "flip_score": False,
-                        "perc":0.8,
-                        "epochs":max(save_epoch),
-                        "batch_size":1,
-                        "save_type": "pkl"}
-            
-            train_nids(files[0], model_param_temp, save_epoch)
-            
-            for epoch in save_epoch:
-                model_param=dict(model_param_temp)
-                model_param["abbrev"]+=f"-{epoch}"
-                model_param["path"]+=f"_{epoch}.pkl"
-                nids_db[f"{dataset}_{model_name}_{epoch}"]=model_param 
-            
-        with open("configs/nids_models.json","w") as f:    
-            json.dump(nids_db, f, indent=4)
-        
-        
-    elif args.command=="find_threshold":
-        
-        with open("configs/nids_models.json","r") as f:
-            nids_db=json.load(f)
-            
-        files=[f"{dataset}_train",f"{dataset}",f"{dataset}_ATK"]
+        #"ACK-LM-0.1-10","ACK-LM-0.5-10","ACK-fgsm","ACK-deep-fool"  "ACK","SYN","UDP","PS","SD"
+        files=[f"{dataset}",f"{dataset}_ACK",f"{dataset}_UDP",f"{dataset}_SYN",f"{dataset}_PS",f"{dataset}_SD"]
+        # files=[f"{dataset}",f"{dataset}_ATK"]
         files=get_files(files)
-        
-        if not os.path.exists(f"exp_figs/meta_plots/pr_curve/{dataset}"):
-            os.mkdir(f"exp_figs/meta_plots/pr_curve/{dataset}")
-            os.mkdir(f"exp_figs/meta_plots/anomaly_scores/{dataset}")
+
+
+        ae=[
+            # "denoising_autoencoder_sigmoid_2_filtered_0.2","autoencoder_relu_2_filtered_0.2" ,"autoencoder_sigmoid_2_filtered_0.2", "kitsune_filtered_0.2",
+            # "autoencoder_relu_2" ,"autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2",
+            # "autoencoder_sigmoid_25","kitsune",
+            # "denoising_autoencoder_sigmoid_2_D","autoencoder_relu_2_D" ,"autoencoder_sigmoid_2_D",
+            # "autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2","autoencoder_sigmoid_25"
+            # "kitsune"
+            "autoencoder_sigmoid_25_filtered_0.2","autoencoder_sigmoid_25_D"
+            ]
+
+        # ae=["kitsune","autoencoder_relu_2","autoencoder_sigmoid_2","denoising_autoencoder_sigmoid_2"]
+        # latent=[25,10,2 ] #10,2 "1","20","40","60","80","100"
+        epochs=["1","20","40","60","80","100"]
+        norms=[0,1,2,np.inf]
             
+        if args.command=="adv_exp":
+            nt=[True, False]
+            
+            test_mode=False
+            # file_idx=0
+            # target_idx=[133445]
+            # file_names=[files[file_idx]["abbrev"]]
+            # start_samples = pd.read_csv(files[file_idx]["path"], usecols=list(range(100)), skiprows = lambda x: x-1 not in target_idx,header=None).to_numpy()
+            
+            for near_threshold in nt:
+                if not test_mode and not near_threshold:
+                    target_idx, start_samples, file_names=reservoir_sample(files, n=2000, near_boundary=near_threshold)
+                    
+                for name,  epoch in itertools.product(ae, epochs):
+                    # idx, benign_directions=sample_n_from_csv(**files[0], n=400)
+                    if name.startswith("kitsune") and epoch != "1":
+                        continue
+                    model_name=f"{dataset}_{name}_{epoch}"
+                    print(model_name)
+                    nids_model=get_nids_model(model_name, threshold_key="opt_t")
+                    
+                    if not test_mode and near_threshold:
+                        target_idx, start_samples, file_names=reservoir_sample(files, nids=nids_model, n=2000, near_boundary=near_threshold)
+                        
+                    
+                    if near_threshold:
+                        eps=0.34349777798961395
+                    else:
+                        eps=1.8395914625818583
+                    # eps=0.34349777798961395
+                    
+                    csv_f = open(f"exp_csv/adv_detect/{dataset}/{nids_model.name}_{'near_threshold' if near_threshold else 'sample'}_random_dir_0.3.csv", "w")
+                    metrics=["file","eps","p","idx","score","label", "max_flips","flip_prob","adv_area","adv_prob","mean_turn","max_turn"]
+                    csv_f.write(",".join(metrics))
+                    csv_f.write("\n")
+                    
+                    if test_mode:
+                        write_to_file =False 
+                    else:
+                        write_to_file=csv_f
+                    for p in norms:
+                        adv_detect_exp(nids_model,target_idx, start_samples,file_names, feature_range, eps, p, write_to_file,
+                                    benign_dir=None)
+    
+        elif args.command=="plot_res":
+            all_results=True
+            near_threshold=True
+            # eval results
+            if all_results:
+                df_auc=pd.read_csv(f"exp_csv/all_data/performance.csv")
+                near_threshold_rob=pd.read_csv(f"exp_csv/all_data/rob-True.csv")
+                all_rob=pd.read_csv(f"exp_csv/all_data/rob-False.csv")
+                
+                adv_summary=pd.concat([near_threshold_rob.assign(loc='Near'),all_rob.assign(loc='All')])
+                adv_summary=adv_summary.set_index(["epoch","NIDS","filtered","new_loss","p","loc"])
+                dataset=f"all"
+            else:
+                df_auc=pd.read_csv(f"exp_csv/performance/{dataset}_eval_results.csv")
+                
+                results=[]
+                common={}
+                for name, epoch in itertools.product(ae, epochs):
+                    if name.startswith("kitsune") and epoch !="1":
+                        continue
+                # for name, epoch in zip(ae, best_epochs):
+                    model_name=f"{dataset}_{name}_{epoch}"
+                    nids_model=get_nids_model(model_name, threshold_key="opt_t", load=False)
+                    result=pd.read_csv(f"exp_csv/adv_detect/{dataset}/{dataset}_{name}_{epoch}_{'near_threshold' if near_threshold else 'sample'}_random_dir_0.3.csv")  
+                    result["nids"]=nids_model["abbrev"]
+                    result["threshold"]=nids_model["threshold"]
+                    result["MELO"]=np.maximum(result["max_flips"] - result["label"] - 1, 0)
+                    result["vul"]=np.where(result["MELO"]>0, True, False)
+                    results.append(result)
+                    if name.startswith("autoencoder_relu"):
+                        vul_points=result[result["vul"]]
+                        if epoch not in common.keys():
+                            common[epoch]=set(zip(vul_points["file"], vul_points["idx"], vul_points["p"]))
+                        else:
+                            common[epoch]=common[epoch].intersection(set(zip(vul_points["file"], vul_points["idx"], vul_points["p"])))
+                # for i,j in common.items():
+                #     print(i, j)
+                df=pd.concat(results)
+                
+                
+                df[["NIDS","epoch"]]=df["nids"].str.rsplit("-", n=1, expand=True)
+                df["filtered"]=df["NIDS"].str.endswith("F0.2")
+                df["new_loss"]=df["NIDS"].str.endswith("D")
+                df["NIDS"].replace({"F0.2":"", "D$":""},inplace=True, regex=True)
+                
+                df["benign"]=np.where(df["file"]=="Cam_1",True, False)
+                df["epoch"]=df["epoch"].astype("int64")
+                df["p"]=df["p"].astype(str)
+                df.drop("file", axis=1, inplace=True)
+                
+                tmp=[df]
+                for e in [20,40,60,80,100]:
+                    tmp.append(df[df["NIDS"]=="Kit"].assign(epoch=e))
+                df=pd.concat(tmp, ignore_index=True)
+                
+                adv_summary=df.groupby(["epoch","NIDS","filtered","new_loss","p"]).agg({"max_turn":"mean","MELO":"mean","mean_turn":"mean", "vul":"sum", "adv_prob":"mean"})
+                adv_summary=adv_summary.join(df.groupby(["epoch","NIDS","filtered","new_loss","p"]).size().to_frame(name="counts"))
+                adv_summary.rename({"max_turn":"MLE"},axis=1,inplace=True)
+                adv_summary.rename(index={"1.0":"1","2.0":"2","inf":"inf"},inplace=True)
+                # adv_summary["rob_count"]=adv_summary["counts"]*(1-adv_summary["robust"])
+                
+            df_auc.rename(columns={"nids":"NIDS"}, inplace=True)
+            df_auc["filtered"]=df_auc["NIDS"].str.endswith("F0.2")
+            df_auc["new_loss"]=df_auc["NIDS"].str.endswith("D")
+            df_auc["NIDS"].replace({"F0.2":"", "D$":""},inplace=True, regex=True)
+            
+
+            df_auc=df_auc.set_index(["NIDS","epoch","filtered","new_loss"])
+           
+            # df_auc=df_auc.reset_index()
+            
+            
+            df_auc_melted=pd.melt(df_auc.query("(filtered==False) & (new_loss==False)"), value_vars=["PR-AUC","opt_f1"],ignore_index=False)
+            if len(df_auc_melted)!=0:
+            
+                fig=sns.relplot(data=df_auc_melted, x="epoch", y="value", hue="NIDS", hue_order=["AE","AE_R","DAE","Kit","AE_25"], kind="line", 
+                                col="variable",height=2, aspect=1, facet_kws={"sharey":'none'},markeredgecolor=None, markersize=3,errorbar=None, markers=['o','v','s','D','^'], 
+                                style_order=["AE","AE_R","DAE","Kit","AE_25"], dashes=False, style="NIDS")
+                sns.move_legend(fig, loc="lower center", ncol = 5, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
+          
+                for handle in fig.legend.legendHandles:
+                    handle.set_markersize(3)  # Adjust marker size as needed
+
+                fig.set_xlabels("Epoch")
+                fig.axes[0,0].set_title("Average Precision")
+                fig.axes[0,1].set_title("Optimal F1")
+                fig.set_ylabels("")
+                fig.tight_layout()
+                fig_name=f"exp_figs/meta_plots/{dataset}_performance.pdf"
+                fig.savefig(fig_name)
+                plt.close(fig.fig)
+                print(f"plotted {fig_name}")
+
+
+
+            filtered_df=df_auc.query("(NIDS in ['AE_R','AE','DAE','AE_25','Kit']) & (new_loss==False)").droplevel("new_loss").drop(columns="dataset")
+            filtered_df=filtered_df.query("filtered==True").droplevel("filtered").subtract(filtered_df.query("(filtered==False)").droplevel("filtered"))
+            
+            new_loss_df=df_auc.query("(NIDS in ['AE_R','AE','DAE','AE_25']) & (filtered==False)").droplevel("filtered").drop(columns="dataset")
+            new_loss_df=new_loss_df.query("new_loss==True").droplevel("new_loss").subtract(new_loss_df.query("(new_loss==False)").droplevel("new_loss"))
+
+            comp_df=pd.concat([new_loss_df.assign(method='DLF'),filtered_df.assign(method='FSP')])
+
+            comp_df=comp_df.set_index(["method"], append=True)
+            df_auc_melted=pd.melt(comp_df, value_vars=["PR-AUC","opt_f1"],ignore_index=False)
+            df_auc_melted=df_auc_melted.reset_index()
+            df_auc_melted["col_var"]=df_auc_melted["variable"]+" "+df_auc_melted["method"]
+            fig=sns.relplot(data=df_auc_melted, x="epoch", y="value", hue="NIDS",kind="line", col="variable", row="method",
+                            height=1.5, aspect=1.3, errorbar=None,facet_kws={"sharey":'row'},markersize=3,markeredgecolor=None, markers=['o','v','s','D','^'], style_order=["AE","AE_R","DAE","Kit","AE_25"],dashes=False, style="NIDS", hue_order=["AE","AE_R","DAE","Kit","AE_25"])
+            fig.set_xlabels("Epoch")
+            fig.set_ylabels("")
+            for (row_key, col_key),ax in fig.axes_dict.items():
+                if col_key=="PR-AUC":
+                    col_key=r"$\Delta$AP"
+                else:
+                    col_key=r"$\Delta$OF1"
+                ax.set_title(f"{row_key} {col_key}")
+            for ax in fig.axes.flat:
+                ax.axhline(y=0, color='black', linestyle='--')
+            sns.move_legend(fig, loc="lower center", ncol = 5, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
+            for handle in fig.legend.legendHandles:
+                handle.set_markersize(3)  # Adjust marker size as needed
+            
+            fig.tight_layout()
+            fig_name=f"exp_figs/meta_plots/{dataset}_performance_comp.pdf"
+            fig.savefig(fig_name)
+            plt.close(fig.fig)
+            print(f"plotted {fig_name}")
         
-        with open(f"exp_csv/performance/{dataset}_eval_results.csv","w") as results:
-            results.write("nids,epoch,PR-AUC,opt_t,opt_f1,precision,recall,real_t,real_f1\n")
-            for name, epoch in tqdm(itertools.product(ae, epochs)):
-                if name.startswith("kitsune") and epoch != "1":
-                    continue
+
+            
+            
+            adv_detect_melt=adv_summary.query("(filtered==False) & (new_loss==False)")
+            fig=sns.relplot(data=adv_detect_melt, kind="line", hue_order=["AE","AE_R","DAE","Kit","AE_25"], 
+                            x="epoch",y="MLE", row="loc", hue="NIDS", col="p",height=1.2,
+                        aspect=1, errorbar=None,  facet_kws={"sharey":"row"},
+                        markers=['o','v','s','D','^'],style_order=["AE","AE_R","DAE","Kit","AE_25"], dashes=False, style="NIDS",markersize=3,markeredgecolor=None)
+            fig.set_xlabels("Epoch")
+            fig.set_ylabels("")
+            sns.move_legend(fig, loc="lower center", ncol = 5, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
+            for handle in fig.legend.legendHandles:
+                handle.set_markersize(3)  # Adjust marker size as needed
+            for i, row_name in enumerate(["Near","Sample"]):
+                for j, col_name in enumerate([r"$l_1$",r"$l_2$",r"$l_\infty$"]):
                 
-                model_name=f"{name}_{epoch}"
-                print(dataset,model_name)
-                model_param=nids_db[f"{dataset}_{model_name}"]     
-                nids_model=get_nids_model(f"{dataset}_{model_name}")
+                    fig.axes[i,j].set_title(f"{col_name} {row_name}")
                 
-                thresholds=eval_nids(dataset,files,[0,0,1], nids_model, plot=True, full_data=False, scaler=None, file_handle=results)
                 
-                model_param["thresholds"]=thresholds
-                nids_db.update({f"{dataset}_{model_name}":model_param})
+            fig.tight_layout()
+            fig_name=f"exp_figs/adv_detect/{dataset}_{'near_threshold' if near_threshold else 'sample'}.pdf"
+            fig.savefig(fig_name)
+            plt.close(fig.fig)
+            print(f"plotted {fig_name}")
+            
+            near_threshold_rob=near_threshold_rob.set_index(["epoch","NIDS","filtered","new_loss","p"])
+            filtered_df=near_threshold_rob.query("(NIDS in ['AE_R','AE','DAE','AE_25','Kit']) & (new_loss==False)").droplevel("new_loss").drop(columns="dataset")
+            filtered_df=filtered_df.query("filtered==True").droplevel("filtered").subtract(filtered_df.query("(filtered==False)").droplevel("filtered"))
+            
+            new_loss_df=near_threshold_rob.query("(NIDS in ['AE_R','AE','DAE','AE_25']) & (filtered==False)").droplevel("filtered").drop(columns="dataset")
+            new_loss_df=new_loss_df.query("new_loss==True").droplevel("new_loss").subtract(new_loss_df.query("(new_loss==False)").droplevel("new_loss"))
+
+            comp_df=pd.concat([new_loss_df.assign(method='DLF'),filtered_df.assign(method='FSP')])
+            fig=sns.relplot(data=comp_df, x="epoch", y="MLE", hue="NIDS",kind="line", col="p", row="method", 
+                            height=1.5, aspect=1, errorbar=None,facet_kws={"sharey":'row'}, markers=['o','v','s','D','^'],markeredgecolor=None,markersize=3, dashes=False, style="NIDS", hue_order=["AE","AE_R","DAE","Kit","AE_25"],style_order=["AE","AE_R","DAE","Kit","AE_25"])
+            
+            fig.set_ylabels("")
+            sns.move_legend(fig, loc="lower center", ncol = 5, bbox_to_anchor = (0.42,0.95),handlelength=1, columnspacing=1.5)
+            
+            for handle in fig.legend.legendHandles:
+                handle.set_markersize(3)  # Adjust marker size as needed
+            for (row_key, col_key),ax in fig.axes_dict.items():
+                if col_key==1:
+                    col_key=r"$l_1$"
+                elif col_key==2:
+                    col_key=r"$l_2$"
+                else:
+                    col_key=r"$l_\infty$"
+                ax.set_title(f"{row_key} {col_key} $\Delta$MLE")
+            for ax in fig.axes.flat:
+                ax.axhline(y=0, color='black', linestyle='--')
+            fig.tight_layout()
+            fig_name=f"exp_figs/adv_detect/{dataset}_rob_comp.pdf"
+            fig.savefig(fig_name)
+            plt.close(fig.fig)
+            print(f"plotted {fig_name}")
+            
+        if all_results:
+            break
+
+        elif args.command=="train_nids":
+            
+            training_datasets=[False, True]
+            if not os.path.exists(f"../models/{dataset}/"):
+                os.mkdir(f"../models/{dataset}/")
+            save_epoch=[1]
+            
+            with open("configs/nids_models.json","r") as f:
+                nids_db=json.load(f)
+
+            for filtered in training_datasets: 
+                files=[f"{dataset}_train{'_filtered_0.2' if filtered else ''}"]
+                files=get_files(files)
+                model_name=f"kitsune{'_filtered_0.2' if filtered else ''}"
+                model_param_temp={
+                            "abbrev":f"Kit{'F0.2' if filtered else ''}",
+                            "path": f"../models/{dataset}/{model_name}",		            
+                            "func_name": "process",
+                            "scaler": None,
+                            "input_dim":46,
+                            "flip_score": False,
+                            "perc":0.8,
+                            "epochs":max(save_epoch),
+                            "batch_size":1,
+                            "save_type": "pkl"}
                 
-        with open("configs/nids_models.json","w") as f:
-            json.dump(nids_db, f, indent=4)
+                train_nids(files[0], model_param_temp, save_epoch)
                 
-    elif args.command=="plot_adr":
-        plot_adr("exp_csv/adv_detect/ADR.csv")
-        
+                for epoch in save_epoch:
+                    model_param=dict(model_param_temp)
+                    model_param["abbrev"]+=f"-{epoch}"
+                    model_param["path"]+=f"_{epoch}.pkl"
+                    nids_db[f"{dataset}_{model_name}_{epoch}"]=model_param 
+                
+            with open("configs/nids_models.json","w") as f:    
+                json.dump(nids_db, f, indent=4)
+            
+            
+        elif args.command=="find_threshold":
+            
+            with open("configs/nids_models.json","r") as f:
+                nids_db=json.load(f)
+                
+            files=[f"{dataset}_train", f"{dataset}_ACK",f"{dataset}_SYN",f"{dataset}_UDP",f"{dataset}_PS",f"{dataset}_SD"]
+            files=get_files(files)
+            
+            if not os.path.exists(f"exp_figs/meta_plots/pr_curve/{dataset}"):
+                os.mkdir(f"exp_figs/meta_plots/pr_curve/{dataset}")
+                os.mkdir(f"exp_figs/meta_plots/anomaly_scores/{dataset}")
+                
+            
+            with open(f"exp_csv/performance/{dataset}_eval_results.csv","w") as results:
+                results.write("nids,epoch,PR-AUC,opt_t,opt_f1,precision,recall,real_t,real_f1\n")
+                for name, epoch in tqdm(itertools.product(ae, epochs)):
+                    if name.startswith("kitsune") and epoch != "1":
+                        continue
+                    
+                    model_name=f"{name}_{epoch}"
+                    print(dataset,model_name)
+                    model_param=nids_db[f"{dataset}_{model_name}"]     
+                    nids_model=get_nids_model(f"{dataset}_{model_name}")
+                    
+                    thresholds=eval_nids(dataset,files,[0,1,1,1,1,1], nids_model, plot=True, full_data=False, scaler=None, file_handle=results)
+                    
+                    model_param["thresholds"]=thresholds
+                    nids_db.update({f"{dataset}_{model_name}":model_param})
+                    
+            with open("configs/nids_models.json","w") as f:
+                json.dump(nids_db, f, indent=4)
+                    
+        elif args.command=="plot_adr":
+            plot_adr("exp_csv/adv_detect/ADR.csv")
+            

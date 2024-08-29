@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.datasets import make_gaussian_quantiles, make_circles
 from tqdm import tqdm
-import sklearn
 from sklearn.preprocessing import MinMaxScaler
 from numpy.random import default_rng
 import tensorflow as tf
@@ -603,7 +602,7 @@ def select_distances_from_pairs(distance_matrix, pairs):
     return selected_distances
 
 
-@tf.function(reduce_retracing=True)
+@tf.function
 def sig_error(signature1, signature2):
     """Compute distance between two topological signatures."""
     d0_death_diff = tf.keras.losses.mean_squared_error(

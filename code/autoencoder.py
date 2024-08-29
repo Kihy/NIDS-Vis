@@ -3,8 +3,7 @@ from tensorflow.keras import layers, losses
 # import tensorflow_addons as tfa
 from helper import *
 from abc import ABC, abstractmethod
-from ripser import ripser
-from gudhi.tensorflow import RipsLayer
+
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
